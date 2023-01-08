@@ -2,13 +2,13 @@ use chrono::Duration;
 
 type String = heapless::String<40>;
 
-#[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Routine {
     Schedule,
     Interval,
 }
 
-#[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Deadline {
     Upcoming(u8),
     Overdue(u8),
@@ -25,7 +25,7 @@ impl From<Duration> for Deadline {
     }
 }
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Task {
     pub name: String,
     pub kind: Routine,
