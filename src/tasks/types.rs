@@ -1,43 +1,34 @@
-use chrono::NaiveDate;
-use heapless::String as HString;
+use chrono::Duration;
 
-type String = HString<40>;
-
-#[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
-pub(super) struct Duration {
-    pub(super) weeks: u8,
-}
-
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
-pub(super) struct Completion {
-    pub(super) date: NaiveDate,
-    pub(super) by: String,
-}
+type String = heapless::String<40>;
 
 #[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
-pub(super) enum Routine {
+pub enum Routine {
     Schedule,
     Interval,
 }
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
-pub struct Task {
-    pub(super) name: String,
-    pub(super) kind: Routine,
-    pub(super) participants: heapless::Vec<String, 2>,
-    pub(super) last_completed: Completion,
-    pub(super) duration: Duration,
+#[derive(Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
+pub enum Deadline {
+    Upcoming(u8),
+    Overdue(u8),
 }
 
-impl Task {
-    pub fn assigned_to(&self) -> &str {
-        let mut participants_iter = self.participants.iter();
-        while let Some(person) = participants_iter.next() {
-            if person == &self.last_completed.by {
-                return participants_iter.next().unwrap_or(&self.participants[0]);
-            }
+impl From<Duration> for Deadline {
+    fn from(duration: Duration) -> Self {
+        let days = duration.num_days();
+        if days >= 0 {
+            Self::Upcoming(days as u8)
+        } else {
+            Self::Overdue(days as u8)
         }
-
-        "oh no"
     }
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub struct Task {
+    pub name: String,
+    pub kind: Routine,
+    pub assigned_to: String,
+    pub deadline: Deadline,
 }
