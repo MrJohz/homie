@@ -5,6 +5,21 @@ use tokio::fs;
 
 use super::types::{Routine, Task};
 
+#[derive(thiserror::Error, Debug)]
+pub enum TaskStoreError {
+    // 500 type errors (it's probably our fault)
+    #[error("underlying data could not be accessed or saved")]
+    FileIo(#[from] tokio::io::Error),
+    #[error("underlying data is corrupted")]
+    FileInvalidFormat(#[from] toml::de::Error),
+
+    // 400 type errors (it's probably your fault)
+    #[error("unknown task name was used")]
+    UnknownTaskName(String),
+    #[error("person not in task rota")]
+    PersonNotInTaskRota(String),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, serde::Deserialize, serde::Serialize)]
 struct DurationSpec {
     weeks: u8,
@@ -66,34 +81,48 @@ impl Store {
         Self { path: path.into() }
     }
 
-    async fn load(&self) -> Vec<SavedTask> {
-        let contents = fs::read_to_string(&self.path).await.unwrap();
-        let TaskToml { task } = toml::from_str(&contents).unwrap();
-        task
+    async fn load(&self) -> Result<Vec<SavedTask>, TaskStoreError> {
+        let contents = fs::read_to_string(&self.path).await?;
+        let TaskToml { task } = toml::from_str(&contents)?;
+        Ok(task)
     }
 
-    async fn store(&self, tasks: Vec<SavedTask>) {
-        fs::write(&self.path, toml::to_vec(&TaskToml { task: tasks }).unwrap())
-            .await
-            .unwrap();
+    async fn store(&self, tasks: Vec<SavedTask>) -> Result<(), TaskStoreError> {
+        fs::write(&self.path, toml::to_vec(&TaskToml { task: tasks }).unwrap()).await?;
+        Ok(())
     }
 
-    pub async fn tasks(&self) -> Vec<Task> {
-        self.load().await.into_iter().map(SavedTask::into).collect()
+    pub async fn tasks(&self) -> Result<Vec<Task>, TaskStoreError> {
+        Ok(self
+            .load()
+            .await?
+            .into_iter()
+            .map(SavedTask::into)
+            .collect())
     }
 
-    pub async fn tasks_for(&self, person: &str) -> Vec<Task> {
-        self.load()
-            .await
+    pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
+        Ok(self
+            .load()
+            .await?
             .into_iter()
             .filter(|task| task.assigned_to() == person)
             .map(SavedTask::into)
-            .collect()
+            .collect())
     }
 
-    pub async fn mark_task_as_done_by(&self, task_name: &str, person: Option<&str>) {
-        let mut tasks = self.load().await;
+    pub async fn mark_task_as_done_by(
+        &self,
+        task_name: &str,
+        person: Option<&str>,
+    ) -> Result<(), TaskStoreError> {
+        let mut tasks = self.load().await?;
         if let Some(task) = tasks.iter_mut().find(|task| task.name == task_name) {
+            if let Some(person) = person {
+                if !task.participants.iter().any(|p| p == person) {
+                    Err(TaskStoreError::PersonNotInTaskRota(person.into()))?
+                }
+            }
             match task.kind {
                 Routine::Schedule => {
                     let today = Local::now().date_naive();
@@ -109,8 +138,11 @@ impl Store {
                     };
                 }
             }
+        } else {
+            Err(TaskStoreError::UnknownTaskName(task_name.into()))?
         }
-        self.store(tasks).await;
+        self.store(tasks).await?;
+        Ok(())
     }
 }
 
@@ -135,7 +167,7 @@ mod tests {
     async fn test_returns_tasks_when_given_file_with_no_tasks() {
         let file = file_with_tasks(vec![]);
         let store = Store::from_file(file.path()).await;
-        let tasks = store.tasks().await;
+        let tasks = store.tasks().await.unwrap();
         assert_eq!(tasks, vec![]);
     }
 
@@ -152,7 +184,7 @@ mod tests {
             duration: DurationSpec { weeks: 2 },
         }]);
         let store = Store::from_file(file.path()).await;
-        let tasks = store.tasks().await;
+        let tasks = store.tasks().await.unwrap();
         assert_eq!(
             tasks,
             vec![Task {
@@ -207,7 +239,7 @@ mod tests {
         );
 
         assert_eq!(
-            tasks_bob,
+            tasks_bob.unwrap(),
             vec![Task {
                 name: "Test Task 1".into(),
                 kind: Routine::Interval,
@@ -216,7 +248,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            tasks_kevin,
+            tasks_kevin.unwrap(),
             vec![Task {
                 name: "Test Task 3".into(),
                 kind: Routine::Interval,
@@ -225,7 +257,7 @@ mod tests {
             }]
         );
         assert_eq!(
-            tasks_samantha,
+            tasks_samantha.unwrap(),
             vec![Task {
                 name: "Test Task 2".into(),
                 kind: Routine::Interval,
@@ -248,9 +280,9 @@ mod tests {
             duration: DurationSpec { weeks: 2 },
         }]);
         let store = Store::from_file(file.path()).await;
-        store.mark_task_as_done_by("Test Task", None).await;
+        store.mark_task_as_done_by("Test Task", None).await.unwrap();
         assert_eq!(
-            store.tasks().await,
+            store.tasks().await.unwrap(),
             vec![Task {
                 name: "Test Task".into(),
                 kind: Routine::Interval,
@@ -273,9 +305,12 @@ mod tests {
             duration: DurationSpec { weeks: 2 },
         }]);
         let store = Store::from_file(file.path()).await;
-        store.mark_task_as_done_by("Test Task", Some("Kevin")).await;
+        store
+            .mark_task_as_done_by("Test Task", Some("Kevin"))
+            .await
+            .unwrap();
         assert_eq!(
-            store.tasks().await,
+            store.tasks().await.unwrap(),
             vec![Task {
                 name: "Test Task".into(),
                 kind: Routine::Interval,
@@ -298,9 +333,9 @@ mod tests {
             duration: DurationSpec { weeks: 2 },
         }]);
         let store = Store::from_file(file.path()).await;
-        store.mark_task_as_done_by("Test Task", None).await;
+        store.mark_task_as_done_by("Test Task", None).await.unwrap();
         assert_eq!(
-            store.tasks().await,
+            store.tasks().await.unwrap(),
             vec![Task {
                 name: "Test Task".into(),
                 kind: Routine::Schedule,
@@ -308,5 +343,53 @@ mod tests {
                 deadline: Deadline::Upcoming(18) // = 4 (days remaining of original task) + 14 (length of task)
             }]
         );
+    }
+
+    #[tokio::test]
+    async fn test_returns_error_if_no_task_can_be_found() {
+        let file = file_with_tasks(vec![SavedTask {
+            name: "Test Task".into(),
+            kind: Routine::Schedule,
+            participants: vec!["Kevin".into(), "Bob".into(), "Samantha".into()],
+            last_completed: Completion {
+                date: (Local::now() - Duration::days(10)).date_naive(),
+                by: "Kevin".into(),
+            },
+            duration: DurationSpec { weeks: 2 },
+        }]);
+        let store = Store::from_file(file.path()).await;
+        let error = store
+            .mark_task_as_done_by("Unknown Task", None)
+            .await
+            .unwrap_err();
+
+        match error {
+            TaskStoreError::UnknownTaskName(name) => assert_eq!(name, "Unknown Task"),
+            _ => panic!("Incorrect error kind, {error:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_returns_error_if_the_given_user_does_not_belong_to_task() {
+        let file = file_with_tasks(vec![SavedTask {
+            name: "Test Task".into(),
+            kind: Routine::Schedule,
+            participants: vec!["Kevin".into(), "Bob".into(), "Samantha".into()],
+            last_completed: Completion {
+                date: (Local::now() - Duration::days(10)).date_naive(),
+                by: "Kevin".into(),
+            },
+            duration: DurationSpec { weeks: 2 },
+        }]);
+        let store = Store::from_file(file.path()).await;
+        let error = store
+            .mark_task_as_done_by("Test Task", Some("Edgar"))
+            .await
+            .unwrap_err();
+
+        match error {
+            TaskStoreError::PersonNotInTaskRota(name) => assert_eq!(name, "Edgar"),
+            _ => panic!("Incorrect error kind, {error:?}"),
+        }
     }
 }
