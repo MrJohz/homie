@@ -1,9 +1,6 @@
 use std::{path::Path, sync::Arc};
 
-use tokio::{
-    io::AsyncReadExt,
-    sync::{RwLock, RwLockReadGuard},
-};
+use tokio::{io::AsyncReadExt, sync::RwLock};
 
 use super::types::Task;
 
@@ -34,7 +31,17 @@ impl Store {
         }
     }
 
-    pub async fn tasks(&self) -> RwLockReadGuard<[Task]> {
-        RwLockReadGuard::map(self.tasks.read().await, |item| item.as_slice())
+    pub async fn tasks(&self) -> Vec<Task> {
+        self.tasks.read().await.to_vec()
+    }
+
+    pub async fn tasks_for(&self, person: &str) -> Vec<Task> {
+        self.tasks
+            .read()
+            .await
+            .iter()
+            .filter(|task| task.assigned_to() == person)
+            .cloned()
+            .collect()
     }
 }
