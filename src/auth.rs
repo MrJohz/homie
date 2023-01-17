@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
 use rand_core::OsRng;
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use uuid::Uuid;
@@ -13,11 +13,25 @@ pub struct Token(String);
 pub enum AuthError {
     // 500 type errors (it's probably our fault)
     #[error("underlying data could not be accessed or saved")]
-    FileIo(#[from] sqlx::Error),
+    DbError(#[from] sqlx::Error),
 
     // 400 type errors (it's probably your fault)
     #[error("user/password mismatch")]
     UserPasswordMismatch,
+}
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> axum::response::Response {
+        match self {
+            AuthError::DbError(ref err) => {
+                tracing::error!({ details = &err.to_string() }, "DB connection error");
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+            }
+            AuthError::UserPasswordMismatch => {
+                (StatusCode::BAD_REQUEST, self.to_string()).into_response()
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -39,7 +53,6 @@ impl AuthState {
             conn: SqlitePool::connect_with(
                 SqliteConnectOptions::from_str(&format!("sqlite://{}", path.as_ref()))
                     .unwrap()
-                    .foreign_keys(true)
                     .create_if_missing(true),
             )
             .await
@@ -60,7 +73,7 @@ impl AuthState {
             .execute(&self.conn)
             .await?;
         sqlx::query(
-            "CREATE TABLE IF NOT EXISTS tokens (token string, username string REFERENCES users (username), expiry string)",
+            "CREATE TABLE IF NOT EXISTS tokens (token string, username string REFERENCES users (username))",
         )
         .execute(&self.conn)
         .await?;
@@ -110,10 +123,9 @@ impl AuthState {
         };
 
         let token = Uuid::new_v4().to_string();
-        sqlx::query("INSERT INTO tokens (username, token, expiry) VALUES (?, ?, ?)")
+        sqlx::query("INSERT INTO tokens (username, token) VALUES (?, ?)")
             .bind(username)
             .bind(&token)
-            .bind("todo")
             .execute(&self.conn)
             .await?;
 
@@ -127,14 +139,12 @@ struct LoginArgs {
     password: String,
 }
 
-async fn login(State(auth): State<AuthState>, args: Json<LoginArgs>) -> Json<Token> {
-    let token = auth.login(&args.username, &args.password).await;
-    let token = token.unwrap();
-    Json(token)
-}
-
-async fn refresh_token(token: Json<Token>) -> Json<Token> {
-    token
+async fn login(
+    State(auth): State<AuthState>,
+    args: Json<LoginArgs>,
+) -> Result<Json<Token>, AuthError> {
+    let token = auth.login(&args.username, &args.password).await?;
+    Ok(Json(token))
 }
 
 pub async fn routes() -> Router {
@@ -146,6 +156,5 @@ pub async fn routes() -> Router {
 
     Router::new()
         .route("/login", post(login))
-        .route("/refresh", post(refresh_token))
         .with_state(auth_state)
 }
