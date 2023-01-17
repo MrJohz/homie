@@ -1,6 +1,9 @@
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use std::str::FromStr;
+
+use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use axum::{extract::State, routing::post, Json, Router};
-use sqlx::SqlitePool;
+use rand_core::OsRng;
+use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use uuid::Uuid;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -33,15 +36,59 @@ impl AuthState {
         let argon2_params = argon2_params.params().unwrap();
 
         Self {
-            conn: SqlitePool::connect(&format!("sqlite://{}", path.as_ref()))
-                .await
-                .unwrap(),
+            conn: SqlitePool::connect_with(
+                SqliteConnectOptions::from_str(&format!("sqlite://{}", path.as_ref()))
+                    .unwrap()
+                    .foreign_keys(true)
+                    .create_if_missing(true),
+            )
+            .await
+            .unwrap(),
             hasher: Argon2::new(
                 argon2::Algorithm::Argon2id,
                 argon2::Version::V0x13,
                 argon2_params,
             ),
         }
+    }
+
+    async fn setup(&self, users: Vec<(String, String)>) -> Result<(), AuthError> {
+        sqlx::query("PRAGMA foreign_keys = ON")
+            .execute(&self.conn)
+            .await?;
+        sqlx::query("CREATE TABLE IF NOT EXISTS users (username string primary key, hash string)")
+            .execute(&self.conn)
+            .await?;
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS tokens (token string, username string REFERENCES users (username), expiry string)",
+        )
+        .execute(&self.conn)
+        .await?;
+
+        for (username, password) in users {
+            let (value,) =
+                sqlx::query_as::<_, (u8,)>("SELECT COUNT(*) FROM users WHERE username = ?")
+                    .bind(&username)
+                    .fetch_one(&self.conn)
+                    .await?;
+            if value > 0 {
+                continue;
+            }
+
+            sqlx::query("INSERT INTO users (username, hash) VALUES (?, ?)")
+                .bind(&username)
+                .bind(
+                    &self
+                        .hasher
+                        .hash_password(password.as_bytes(), &SaltString::generate(OsRng))
+                        .unwrap()
+                        .to_string(),
+                )
+                .execute(&self.conn)
+                .await?;
+        }
+
+        Ok(())
     }
 
     async fn login(&self, username: &str, password: &str) -> Result<Token, AuthError> {
@@ -62,19 +109,15 @@ impl AuthState {
             None => Err(AuthError::UserPasswordMismatch)?,
         };
 
-        let token = Uuid::new_v4();
-        let x = sqlx::query_as::<_, (String,)>(
-            "INSERT INTO tokens (username, token, expiry) VALUES (?, ?, ?)",
-        )
-        .bind(username)
-        .bind(token.into_bytes().as_slice())
-        .bind("todo")
-        .fetch_one(&self.conn)
-        .await?;
+        let token = Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO tokens (username, token, expiry) VALUES (?, ?, ?)")
+            .bind(username)
+            .bind(&token)
+            .bind("todo")
+            .execute(&self.conn)
+            .await?;
 
-        dbg!(x);
-
-        Ok(Token("".into()))
+        Ok(Token(token))
     }
 }
 
@@ -86,17 +129,23 @@ struct LoginArgs {
 
 async fn login(State(auth): State<AuthState>, args: Json<LoginArgs>) -> Json<Token> {
     let token = auth.login(&args.username, &args.password).await;
-    dbg!(token);
-    Json(Token("".into()))
+    let token = token.unwrap();
+    Json(token)
 }
 
 async fn refresh_token(token: Json<Token>) -> Json<Token> {
-    Json(Token("".into()))
+    token
 }
 
 pub async fn routes() -> Router {
+    let auth_state = AuthState::from_path("data/auth.db").await;
+    auth_state
+        .setup(vec![("Test User".into(), "testpw123".into())])
+        .await
+        .unwrap();
+
     Router::new()
         .route("/login", post(login))
         .route("/refresh", post(refresh_token))
-        .with_state(AuthState::from_path("data/auth.db").await)
+        .with_state(auth_state)
 }
