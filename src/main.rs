@@ -1,5 +1,6 @@
 use axum::Router;
 
+mod auth;
 mod tasks;
 
 #[tokio::main]
@@ -11,6 +12,7 @@ async fn main() {
     // build our application with a single route
     let app = Router::new()
         .nest("/tasks", tasks::routes().await)
+        .nest("/auth", auth::routes().await)
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
     // run it with hyper on localhost:3000
