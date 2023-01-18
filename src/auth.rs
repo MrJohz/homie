@@ -1,7 +1,14 @@
-use std::str::FromStr;
+use std::{fmt::Debug, str::FromStr};
 
 use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
+use axum::{
+    extract::State,
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router,
+};
 use rand_core::OsRng;
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use uuid::Uuid;
@@ -18,6 +25,10 @@ pub enum AuthError {
     // 400 type errors (it's probably your fault)
     #[error("user/password mismatch")]
     UserPasswordMismatch,
+    #[error("unknown token")]
+    UnknownToken,
+    #[error("missing token")]
+    MissingToken,
 }
 
 impl IntoResponse for AuthError {
@@ -27,7 +38,8 @@ impl IntoResponse for AuthError {
                 tracing::error!({ details = &err.to_string() }, "DB connection error");
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
             }
-            AuthError::UserPasswordMismatch => {
+            AuthError::UserPasswordMismatch | AuthError::UnknownToken | AuthError::MissingToken => {
+                tracing::warn!({ details = self.to_string() }, "Authentication failure");
                 (StatusCode::BAD_REQUEST, self.to_string()).into_response()
             }
         }
@@ -35,13 +47,13 @@ impl IntoResponse for AuthError {
 }
 
 #[derive(Clone)]
-struct AuthState {
+pub struct AuthState {
     conn: SqlitePool,
     hasher: Argon2<'static>,
 }
 
 impl AuthState {
-    async fn from_path(path: impl AsRef<str>) -> Self {
+    pub async fn from_path(path: impl AsRef<str>) -> Self {
         // See https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
         let mut argon2_params = argon2::ParamsBuilder::new();
         argon2_params.m_cost(15360).unwrap();
@@ -66,9 +78,6 @@ impl AuthState {
     }
 
     async fn setup(&self, users: Vec<(String, String)>) -> Result<(), AuthError> {
-        sqlx::query("PRAGMA foreign_keys = ON")
-            .execute(&self.conn)
-            .await?;
         sqlx::query("CREATE TABLE IF NOT EXISTS users (username string primary key, hash string)")
             .execute(&self.conn)
             .await?;
@@ -131,6 +140,19 @@ impl AuthState {
 
         Ok(Token(token))
     }
+
+    async fn validate_token(&self, token: &str) -> Result<(), AuthError> {
+        let (found,) = sqlx::query_as::<_, (u8,)>("SELECT COUNT(*) FROM tokens WHERE token = ?")
+            .bind(token)
+            .fetch_one(&self.conn)
+            .await?;
+
+        if found > 0 {
+            Ok(())
+        } else {
+            Err(AuthError::UnknownToken)
+        }
+    }
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -147,8 +169,7 @@ async fn login(
     Ok(Json(token))
 }
 
-pub async fn routes() -> Router {
-    let auth_state = AuthState::from_path("data/auth.db").await;
+pub async fn routes(auth_state: AuthState) -> Router {
     auth_state
         .setup(vec![("Test User".into(), "testpw123".into())])
         .await
@@ -157,4 +178,28 @@ pub async fn routes() -> Router {
     Router::new()
         .route("/login", post(login))
         .with_state(auth_state)
+}
+
+async fn evaluate_token<B: Debug>(auth: &AuthState, request: &Request<B>) -> Result<(), AuthError> {
+    let token = request
+        .headers()
+        .get("token")
+        .and_then(|h| h.to_str().ok())
+        .ok_or(AuthError::MissingToken)?;
+
+    auth.validate_token(token).await?;
+    Ok(())
+}
+
+pub async fn login_middleware<B: Debug>(
+    State(auth): State<AuthState>,
+    request: Request<B>,
+    next: Next<B>,
+) -> Response {
+    if let Err(error) = evaluate_token(&auth, &request).await {
+        return error.into_response();
+    }
+
+    let response = next.run(request).await;
+    response
 }
