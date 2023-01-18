@@ -125,10 +125,7 @@ impl Store {
             }
             match task.kind {
                 Routine::Schedule => {
-                    let today = Local::now().date_naive();
-                    while task.last_completed.date < today {
-                        task.last_completed.date += Duration::weeks(task.duration.weeks.into());
-                    }
+                    task.last_completed.date += Duration::weeks(task.duration.weeks.into());
                     task.last_completed.by = person.unwrap_or_else(|| task.assigned_to()).into()
                 }
                 Routine::Interval => {
@@ -341,6 +338,31 @@ mod tests {
                 kind: Routine::Schedule,
                 assigned_to: "Samantha".into(),
                 deadline: Deadline::Upcoming(18) // = 4 (days remaining of original task) + 14 (length of task)
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_correctly_updates_overdue_schedule_task() {
+        let file = file_with_tasks(vec![SavedTask {
+            name: "Test Task".into(),
+            kind: Routine::Schedule,
+            participants: vec!["Kevin".into(), "Bob".into(), "Samantha".into()],
+            last_completed: Completion {
+                date: (Local::now() - Duration::days(18)).date_naive(),
+                by: "Kevin".into(),
+            },
+            duration: DurationSpec { weeks: 2 },
+        }]);
+        let store = Store::from_file(file.path()).await;
+        store.mark_task_as_done_by("Test Task", None).await.unwrap();
+        assert_eq!(
+            store.tasks().await.unwrap(),
+            vec![Task {
+                name: "Test Task".into(),
+                kind: Routine::Schedule,
+                assigned_to: "Samantha".into(),
+                deadline: Deadline::Upcoming(10) // = 4 (days remaining of original task) + 14 (length of task)
             }]
         );
     }

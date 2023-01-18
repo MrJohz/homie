@@ -10,17 +10,17 @@ pub enum Routine {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Deadline {
-    Upcoming(u8),
-    Overdue(u8),
+    Upcoming(u16),
+    Overdue(u16),
 }
 
 impl From<Duration> for Deadline {
     fn from(duration: Duration) -> Self {
         let days = duration.num_days();
         if days >= 0 {
-            Self::Upcoming(days as u8)
+            Self::Upcoming(days as u16)
         } else {
-            Self::Overdue(days as u8)
+            Self::Overdue((-days) as u16)
         }
     }
 }
