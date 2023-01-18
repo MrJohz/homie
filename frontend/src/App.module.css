@@ -1,0 +1,6 @@
+.page {
+  background-color: var(--color-off-white);
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}

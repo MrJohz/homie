@@ -1,0 +1,6 @@
+.header {
+  composes: font-heading padding-default text-large from "./_atoms.css";
+  display: flex;
+  text-transform: uppercase;
+  background-color: var(--color-orange);
+}

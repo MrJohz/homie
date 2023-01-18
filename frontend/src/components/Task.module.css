@@ -1,0 +1,19 @@
+.taskbox {
+  composes: border-default from "../design/_atoms.css";
+  --border-color: var(--color-yellow);
+  text-transform: lowercase;
+}
+
+.taskboxHeader {
+  composes: padding-small from "../design/_atoms.css";
+  background-color: var(--color-yellow);
+}
+
+.taskboxItem {
+  composes: margin-small from "../design/_atoms.css";
+  display: flex;
+}
+
+.taskboxItem:not(:first) {
+  margin-top: 0;
+}

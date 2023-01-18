@@ -1,0 +1,18 @@
+.button {
+  composes: text-small padding-span shadow-small from "./_atoms.css";
+  background-color: var(--color-blue);
+  color: var(--color-off-white);
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+
+.button:hover {
+  transform: translateY(1px);
+  --shadow-adjustment: 1px;
+}
+
+.button:active {
+  transform: translateY(3px);
+  --shadow-adjustment: 3px;
+}

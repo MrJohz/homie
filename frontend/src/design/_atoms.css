@@ -1,0 +1,62 @@
+:root {
+  --color-blue: #297373;
+  --color-yellow: #e9d758;
+  --color-orange: #ff8552;
+  --color-off-white: #e6e6e6;
+  --color-off-black: #39393a;
+  --color-white: white;
+  --color-black: black;
+
+  font-size: 18px;
+}
+
+.text-small {
+  font-size: 0.75rem;
+}
+
+.text-large {
+  font-size: 2rem;
+}
+
+.padding-span {
+  padding: 0.25rem 0.5rem;
+}
+.padding-default {
+  padding: 1rem;
+}
+.padding-small {
+  padding: 0.5rem;
+}
+
+.margin-default {
+  margin: 1rem;
+}
+.margin-small {
+  margin: 0.5rem;
+}
+.-margin-small {
+  margin: -0.5rem;
+}
+
+.gap-default {
+  gap: 1rem;
+}
+
+.border-default {
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--border-color);
+}
+
+.shadow-small {
+  --shadow-adjustment: 0px;
+  box-shadow: calc(0.25rem - var(--shadow-adjustment))
+    calc(0.25rem - var(--shadow-adjustment)) 0 0 var(--color-off-black);
+}
+
+.font-heading {
+  font-family: "BioRhyme Expanded", serif;
+}
+.font-body {
+  font-family: "Quicksand", sans-serif;
+}

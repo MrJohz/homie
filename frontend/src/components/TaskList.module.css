@@ -1,0 +1,5 @@
+.taskList {
+  composes: margin-default gap-default from "../design/_atoms.css";
+  display: flex;
+  flex-direction: column;
+}
