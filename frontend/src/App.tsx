@@ -7,10 +7,12 @@ import { FlexGap } from "./design/FlexGap";
 import { IconButton } from "./design/IconButton";
 import { Modal, ModalActions, ModalHeader } from "./design/Modal";
 import { Button } from "./design/Button";
-import { createSignal } from "solid-js";
+import { useAuth } from "./stores/useAuth";
+import { fetchTasks } from "./resources";
+import { createEffect } from "solid-js";
 
 export function App() {
-  const [open, setOpen] = createSignal(true);
+  const [auth, authActions] = useAuth();
 
   const tasks: ITask[] = [
     {
@@ -51,24 +53,24 @@ export function App() {
     },
   ];
 
+  const result = authActions.fetchWithToken(fetchTasks, {});
+
   return (
     <div class={styles.page}>
-      <Modal open={open()}>
+      <Modal open={auth().state === "unauthed"}>
         <ModalHeader>Login</ModalHeader>
         Hello, World!
         <ModalActions>
           <FlexGap />
-          <Button variant="subtle" onClick={[setOpen, false]}>
-            Cancel
+          <Button onClick={() => authActions.login("Test User", "testpw123")}>
+            Login
           </Button>
-          <Button>Login</Button>
         </ModalActions>
       </Modal>
       <Header>
         Tasks
         <FlexGap />
         <IconButton
-          onClick={[setOpen, true]}
           aria-label="Open Menu"
           icon={<BsChevronDown aria-hidden="true" />}
         />

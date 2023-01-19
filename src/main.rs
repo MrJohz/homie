@@ -12,10 +12,9 @@ async fn main() {
 
     let auth_state = AuthState::from_path("data/auth.db").await;
 
-    // build our application with a single route
     let app = Router::new()
         .nest(
-            "/tasks",
+            "/api/tasks",
             tasks::routes()
                 .await
                 .route_layer(middleware::from_fn_with_state(
@@ -23,11 +22,10 @@ async fn main() {
                     auth::login_middleware,
                 )),
         )
-        .nest("/auth", auth::routes(auth_state.clone()).await)
+        .nest("/api/auth", auth::routes(auth_state.clone()).await)
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
-    // run it with hyper on localhost:3000
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&"0.0.0.0:3030".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();

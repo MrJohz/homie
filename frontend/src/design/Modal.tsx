@@ -1,5 +1,12 @@
 import clsx from "clsx";
-import { createEffect, createSignal, JSX } from "solid-js";
+import {
+  createContext,
+  createEffect,
+  createSignal,
+  createUniqueId,
+  JSX,
+  useContext,
+} from "solid-js";
 
 import styles from "./Modal.module.css";
 
@@ -21,17 +28,22 @@ function callHandler<T, E extends Event>(
   }
 }
 
+const ModalContext = createContext<{ setLabelledBy: (id: string) => void }>({
+  setLabelledBy: () => undefined,
+});
+
 export function Modal(props: {
   open?: boolean;
   onCancel?: JSX.DialogHtmlAttributes<HTMLDialogElement>["onCancel"];
   children?: JSX.Element;
 }) {
   const [dialogRef, setDialogRef] = createSignal<HTMLDialogElement>();
+  const [labelledBy, setLabelledBy] = createSignal<string | null>(null);
 
   createEffect(() => {
-    if (props.open) {
+    if (props.open && !dialogRef().open) {
       dialogRef().showModal();
-    } else {
+    } else if (!props.open && dialogRef().open) {
       dialogRef().close(SELF_CLOSE_SENTINEL);
     }
   });
@@ -40,6 +52,7 @@ export function Modal(props: {
     <dialog
       class={styles.modalWrapper}
       ref={setDialogRef}
+      aria-labelledBy={labelledBy()}
       onClick={(e) => {
         if (e.target !== e.currentTarget) return; // bubbling is happening
 
@@ -66,13 +79,20 @@ export function Modal(props: {
         callHandler(props.onCancel, e);
       }}
     >
-      <div class={styles.modal}>{props.children}</div>
+      <ModalContext.Provider value={{ setLabelledBy }}>
+        <div class={styles.modal}>{props.children}</div>
+      </ModalContext.Provider>
     </dialog>
   );
 }
 
 export function ModalHeader(props: JSX.HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} class={clsx(styles.modalHeader, props.class)} />;
+  const modalContext = useContext(ModalContext);
+  const id = props.id ?? createUniqueId(); // TODO: theoretically this ought to be reactive
+  modalContext.setLabelledBy(id);
+  return (
+    <div {...props} class={clsx(styles.modalHeader, props.class)} id={id} />
+  );
 }
 
 export function ModalActions(props: JSX.HTMLAttributes<HTMLDivElement>) {
