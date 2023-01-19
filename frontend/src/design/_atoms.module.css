@@ -1,5 +1,6 @@
-:root {
-  --color-blue: #297373;
+:root,
+::backdrop {
+  --color-blue: #1d6363;
   --color-yellow: #e9d758;
   --color-orange: #ff8552;
   --color-off-white: #e6e6e6;
@@ -13,9 +14,11 @@
 .text-small {
   font-size: 0.75rem;
 }
-
-.text-large {
+.text-h1 {
   font-size: 2rem;
+}
+.text-h2 {
+  font-size: 1.25rem;
 }
 
 .padding-span {
@@ -34,6 +37,9 @@
 .margin-small {
   margin: 0.5rem;
 }
+.-margin-default {
+  margin: -1rem;
+}
 .-margin-small {
   margin: -0.5rem;
 }
@@ -41,22 +47,45 @@
 .gap-default {
   gap: 1rem;
 }
+.gap-small {
+  gap: 0.5rem;
+}
 
+:root {
+  --border-color: currentColor;
+}
 .border-default {
   border-width: 2px;
   border-style: solid;
   border-color: var(--border-color);
 }
+.border-big {
+  border-width: 4px;
+  border-style: solid;
+  border-color: var(--border-color);
+}
 
-.shadow-small {
+:root {
   --shadow-adjustment: 0px;
+}
+.shadow-small {
   box-shadow: calc(0.25rem - var(--shadow-adjustment))
     calc(0.25rem - var(--shadow-adjustment)) 0 0 var(--color-off-black);
+}
+.shadow-default {
+  --shadow-adjustment: 0px;
+  box-shadow: calc(0.5rem - var(--shadow-adjustment))
+    calc(0.5rem - var(--shadow-adjustment)) 0 0 var(--color-off-black);
 }
 
 .font-heading {
   font-family: "BioRhyme Expanded", serif;
+  text-transform: uppercase;
 }
 .font-body {
   font-family: "Quicksand", sans-serif;
+}
+
+.big-width-1 {
+  min-width: 15rem;
 }

@@ -1,5 +1,5 @@
 .header {
-  composes: font-heading padding-default text-large from "./_atoms.css";
+  composes: font-heading padding-default text-h1 from "./_atoms.module.css";
   display: flex;
   text-transform: uppercase;
   background-color: var(--color-orange);

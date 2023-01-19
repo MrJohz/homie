@@ -1,16 +1,16 @@
 .taskbox {
-  composes: border-default from "../design/_atoms.css";
+  composes: border-default from "../design/_atoms.module.css";
   --border-color: var(--color-yellow);
   text-transform: lowercase;
 }
 
 .taskboxHeader {
-  composes: padding-small from "../design/_atoms.css";
+  composes: padding-small from "../design/_atoms.module.css";
   background-color: var(--color-yellow);
 }
 
 .taskboxItem {
-  composes: margin-small from "../design/_atoms.css";
+  composes: margin-small from "../design/_atoms.module.css";
   display: flex;
 }
 

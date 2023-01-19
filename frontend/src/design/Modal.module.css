@@ -1,0 +1,31 @@
+.modalWrapper {
+  composes: shadow-default from "./_atoms.module.css";
+  padding: 0;
+  border: 0;
+  background-color: var(--color-off-white);
+  color: var(--color-off-black);
+}
+
+.modalWrapper::backdrop {
+  background: var(--color-off-black);
+  opacity: 0.75;
+}
+
+.modal {
+  composes: padding-small border-default gap-small big-width-1 from "./_atoms.module.css";
+  --border-color: var(--color-orange);
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  composes: -margin-small padding-small text-h2 font-heading from "./_atoms.module.css";
+  background-color: var(--color-orange);
+  margin-bottom: 0;
+}
+
+.modalActions {
+  composes: gap-small from "./_atoms.module.css";
+  display: flex;
+  margin-top: 0;
+}
