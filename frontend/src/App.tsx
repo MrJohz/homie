@@ -26,36 +26,6 @@ export function App() {
       assigned_to: "Jonathan",
       deadline: { Upcoming: 3 },
     },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
   ];
 
   return (
@@ -63,7 +33,10 @@ export function App() {
       <Header>
         Tasks
         <FlexGap />
-        <IconButton icon={<BsChevronDown />} />
+        <IconButton
+          aria-label="Open Menu"
+          icon={<BsChevronDown aria-hidden="true" />}
+        />
       </Header>
       <TaskList tasks={tasks} />
     </div>

@@ -41,7 +41,7 @@
 
 body {
   font-family: "SofiaSans", sans-serif;
-  font-variation-settings: "wght" 300;
+  color: var(--color-off-black);
 }
 
 #root {

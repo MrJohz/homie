@@ -3,4 +3,5 @@
   display: flex;
   text-transform: uppercase;
   background-color: var(--color-orange);
+  color: var(--color-off-black);
 }

@@ -4,3 +4,7 @@
   align-items: center;
   cursor: pointer;
 }
+
+.iconButton:focus-visible svg {
+  outline: solid 2px currentColor;
+}

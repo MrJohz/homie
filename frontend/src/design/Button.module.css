@@ -1,10 +1,14 @@
 .button {
   composes: text-small padding-span shadow-small from "./_atoms.css";
   background-color: var(--color-blue);
-  color: var(--color-off-white);
+  color: var(--color-white);
   text-transform: uppercase;
   cursor: pointer;
   user-select: none;
+}
+
+.button:focus-visible {
+  outline: solid 2px currentColor;
 }
 
 .button:hover {
