@@ -4,7 +4,13 @@
 
 - [ ] Come up with a better name
 - [ ] Allow connections from local network without token auth?
-- [ ] Add frontend
+- [ ] Loading indicators on buttons (changing background?)
+- [ ] Inputs design
+- [ ] Desktop version
+- [ ] Filters (and searching?)
+- [ ] Logout functionality
+- [ ] Some level of token expiry and deletion
+- [ ] Load users from a file somewhere
 
 ## How to build
 

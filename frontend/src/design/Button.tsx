@@ -6,9 +6,10 @@ import styles from "./Button.module.css";
 export function Button(
   props: JSX.HTMLAttributes<HTMLButtonElement> & {
     variant?: "subtle" | "default";
+    loading?: boolean;
   }
 ) {
-  const [own, rest] = splitProps(props, ["variant", "class"]);
+  const [own, rest] = splitProps(props, ["variant", "class", "loading"]);
   return (
     <button
       {...rest}

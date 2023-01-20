@@ -41,10 +41,13 @@ export function Modal(props: {
   const [labelledBy, setLabelledBy] = createSignal<string | null>(null);
 
   createEffect(() => {
-    if (props.open && !dialogRef().open) {
-      dialogRef().showModal();
-    } else if (!props.open && dialogRef().open) {
-      dialogRef().close(SELF_CLOSE_SENTINEL);
+    const ref = dialogRef();
+    if (!ref) return;
+
+    if (props.open && !ref.open) {
+      ref.showModal();
+    } else if (!props.open && ref.open) {
+      ref.close(SELF_CLOSE_SENTINEL);
     }
   });
 
