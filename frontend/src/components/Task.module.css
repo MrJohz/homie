@@ -6,7 +6,9 @@
 
 .taskboxHeader {
   composes: padding-small from "../design/_atoms.module.css";
+  display: flex;
   background-color: var(--color-yellow);
+  justify-content: space-between;
 }
 
 .taskboxItem {
@@ -16,4 +18,8 @@
 
 .taskboxItem:not(:first) {
   margin-top: 0;
+}
+
+.overdue {
+  color: var(--color-red);
 }

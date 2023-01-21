@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "clsx": "^1.2.1",
+    "date-fns": "^2.29.3",
     "solid-icons": "^1.0.4",
     "solid-js": "^1.6.9",
     "the-new-css-reset": "^1.8.2"

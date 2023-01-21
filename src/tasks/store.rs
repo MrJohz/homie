@@ -22,7 +22,7 @@ pub enum TaskStoreError {
 
 #[derive(Debug, Clone, Copy, PartialEq, serde::Deserialize, serde::Serialize)]
 struct DurationSpec {
-    weeks: u8,
+    weeks: u16,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -62,6 +62,8 @@ impl From<SavedTask> for Task {
             deadline: (task.last_completed.date + Duration::weeks(task.duration.weeks as i64)
                 - Local::now().date_naive())
             .into(),
+            length_days: task.duration.weeks * 7,
+            last_completed: task.last_completed.date,
         }
     }
 }
@@ -188,7 +190,9 @@ mod tests {
                 name: "Test Task".into(),
                 kind: Routine::Interval,
                 assigned_to: "Bob".into(),
-                deadline: Deadline::Upcoming(12)
+                deadline: Deadline::Upcoming(12),
+                length_days: 14,
+                last_completed: (Local::now() - Duration::days(2)).date_naive(),
             }]
         );
     }
@@ -241,7 +245,9 @@ mod tests {
                 name: "Test Task 1".into(),
                 kind: Routine::Interval,
                 assigned_to: "Bob".into(),
-                deadline: Deadline::Upcoming(5)
+                deadline: Deadline::Upcoming(5),
+                length_days: 7,
+                last_completed: (Local::now() - Duration::days(2)).date_naive(),
             }]
         );
         assert_eq!(
@@ -250,7 +256,9 @@ mod tests {
                 name: "Test Task 3".into(),
                 kind: Routine::Interval,
                 assigned_to: "Kevin".into(),
-                deadline: Deadline::Upcoming(5)
+                deadline: Deadline::Upcoming(5),
+                length_days: 7,
+                last_completed: (Local::now() - Duration::days(2)).date_naive(),
             }]
         );
         assert_eq!(
@@ -259,7 +267,9 @@ mod tests {
                 name: "Test Task 2".into(),
                 kind: Routine::Interval,
                 assigned_to: "Samantha".into(),
-                deadline: Deadline::Upcoming(5)
+                deadline: Deadline::Upcoming(5),
+                length_days: 7,
+                last_completed: (Local::now() - Duration::days(2)).date_naive(),
             }]
         );
     }
@@ -284,7 +294,9 @@ mod tests {
                 name: "Test Task".into(),
                 kind: Routine::Interval,
                 assigned_to: "Samantha".into(),
-                deadline: Deadline::Upcoming(14)
+                deadline: Deadline::Upcoming(14),
+                length_days: 14,
+                last_completed: (Local::now()).date_naive(),
             }]
         );
     }
@@ -312,7 +324,9 @@ mod tests {
                 name: "Test Task".into(),
                 kind: Routine::Interval,
                 assigned_to: "Bob".into(),
-                deadline: Deadline::Upcoming(14)
+                deadline: Deadline::Upcoming(14),
+                length_days: 14,
+                last_completed: (Local::now()).date_naive(),
             }]
         );
     }
@@ -337,7 +351,9 @@ mod tests {
                 name: "Test Task".into(),
                 kind: Routine::Schedule,
                 assigned_to: "Samantha".into(),
-                deadline: Deadline::Upcoming(18) // = 4 (days remaining of original task) + 14 (length of task)
+                deadline: Deadline::Upcoming(18), // = 4 (days remaining of original task) + 14 (length of task)
+                length_days: 14,
+                last_completed: (Local::now() + Duration::days(4)).date_naive(),
             }]
         );
     }
@@ -362,7 +378,9 @@ mod tests {
                 name: "Test Task".into(),
                 kind: Routine::Schedule,
                 assigned_to: "Samantha".into(),
-                deadline: Deadline::Upcoming(10) // = 4 (days remaining of original task) + 14 (length of task)
+                deadline: Deadline::Upcoming(10), // = 14 (length of task) - 4 (days remaining of original task)
+                length_days: 14,
+                last_completed: (Local::now() - Duration::days(4)).date_naive(),
             }]
         );
     }

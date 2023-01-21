@@ -1,4 +1,4 @@
-use chrono::Duration;
+use chrono::{Duration, NaiveDate};
 
 type String = heapless::String<40>;
 
@@ -31,4 +31,6 @@ pub struct Task {
     pub kind: Routine,
     pub assigned_to: String,
     pub deadline: Deadline,
+    pub length_days: u16,
+    pub last_completed: NaiveDate,
 }

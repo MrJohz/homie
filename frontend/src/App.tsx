@@ -1,11 +1,6 @@
-import { BsChevronDown } from "solid-icons/bs";
 import styles from "./App.module.css";
 import { Header } from "./design/Header";
 import { TaskList } from "./components/TaskList";
-import { FlexGap } from "./design/FlexGap";
-import { IconButton } from "./design/IconButton";
-import { Modal, ModalActions, ModalHeader } from "./design/Modal";
-import { Button } from "./design/Button";
 import { useAuth } from "./stores/useAuth";
 import { fetchTasks } from "./resources";
 import { createStore, reconcile } from "solid-js/store";
@@ -32,7 +27,7 @@ export function App() {
 
   createEffect(() => {
     refreshTasks();
-    const interval = setInterval(refreshTasks, 10000);
+    const interval = setInterval(refreshTasks, 10 * 60 * 1000);
     onCleanup(() => clearInterval(interval));
   });
 

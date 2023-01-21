@@ -3,4 +3,6 @@ export type ITask = {
   kind: "Schedule" | "Interval";
   assigned_to: string;
   deadline: { Overdue: number } | { Upcoming: number };
+  length_days: number;
+  last_completed: string;
 };
