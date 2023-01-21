@@ -1,57 +1,33 @@
 import { createSignal, Show } from "solid-js";
-import { createStore } from "solid-js/store";
 import { Button } from "../design/Button";
-import { FlexGap } from "../design/FlexGap";
+import { Error } from "../design/Error";
 import { Form, validateNonEmptyString } from "../design/Form";
 import { InputRow } from "../design/InputRow";
 import { Modal, ModalHeader, ModalActions } from "../design/Modal";
 import { useAuth } from "../stores/useAuth";
 
-type Errors = {
-  username: string | undefined;
-  password: string | undefined;
-  form: string | undefined;
-};
+import styles from "./LoginModal.module.css";
 
 export function LoginModal() {
   const [auth, authActions] = useAuth();
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
-  const [error, setError] = createStore<Errors>({
-    username: undefined,
-    password: undefined,
-    form: undefined,
-  });
+  const [error, setError] = createSignal<string | null>(null);
 
   async function login() {
-    let missingData = false;
-    if (/^\s*$/.test(username())) {
-      setError({ username: "Username must not be empty" });
-      missingData = true;
-    } else {
-      setError({ username: undefined });
-    }
-    if (/^\s*$/.test(password())) {
-      setError({ password: "Password must not be empty" });
-      missingData = true;
-    } else {
-      setError({ password: undefined });
-    }
-
-    if (missingData) return;
     const response = await authActions.login(username(), password());
-    setError({ username: undefined, password: undefined, form: undefined });
 
-    if (response.k == "ok") {
+    if (response.k === "ok") {
+      setError(null);
       setUsername("");
       setPassword("");
       return;
     }
 
     if (response.value === "BAD_AUTH") {
-      setError({ form: "Invalid username and/or password" });
+      setError("Invalid login details");
     } else if (response.value === "BAD_CONNECTION") {
-      setError({ form: "Could not connect to servers, please try again" });
+      setError("Server error, try again");
     }
   }
 
@@ -73,8 +49,8 @@ export function LoginModal() {
             onInput={(e) => setPassword(e.currentTarget.value)}
             validate={[validateNonEmptyString]}
           />
-          <ModalActions>
-            <FlexGap />
+          <ModalActions class={styles.actions}>
+            <Error class={styles.error} error={error()} />
             <Button type="submit" variant="subtle">
               Login
             </Button>

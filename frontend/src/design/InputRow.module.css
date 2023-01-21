@@ -21,14 +21,3 @@
   color: var(--color-blue);
   margin-bottom: -2px;
 }
-
-.error {
-  composes: border-default shadow-small padding-span text-small gap-small from "./_atoms.module.css";
-  --border-color: var(--color-blue);
-  margin-top: -2px;
-  align-self: flex-end;
-  background-color: var(--color-off-white);
-  color: var(--color-red);
-  display: inline-flex;
-  align-items: center;
-}

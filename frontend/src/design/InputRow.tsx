@@ -13,6 +13,7 @@ import {
   splitProps,
   useContext,
 } from "solid-js";
+import { Error } from "./Error";
 import { FormContext, ValidationArray } from "./Form";
 
 import styles from "./InputRow.module.css";
@@ -44,12 +45,7 @@ export function InputRow(
       <label class={styles.container}>
         <span class={styles.label}>{own.label}</span>
         <input {...rest} ref={setRef} class={clsx(own.class, styles.input)} />
-        <Show when={error() !== null}>
-          <span class={styles.error}>
-            <BsExclamationCircle />
-            {error()}
-          </span>
-        </Show>
+        <Error error={error()} />
       </label>
     </>
   );

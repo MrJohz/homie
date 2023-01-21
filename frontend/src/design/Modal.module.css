@@ -24,8 +24,12 @@
   margin-bottom: -0.5rem;
 }
 
+:root {
+  --modal-actions-align: flex-end;
+}
 .modalActions {
   composes: gap-default from "./_atoms.module.css";
+  justify-content: var(--modal-actions-align);
   display: flex;
   margin-top: 0;
 }
