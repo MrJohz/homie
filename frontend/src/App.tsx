@@ -1,7 +1,6 @@
 import { BsChevronDown } from "solid-icons/bs";
 import styles from "./App.module.css";
 import { Header } from "./design/Header";
-import { ITask } from "./types";
 import { TaskList } from "./components/TaskList";
 import { FlexGap } from "./design/FlexGap";
 import { IconButton } from "./design/IconButton";
@@ -9,71 +8,52 @@ import { Modal, ModalActions, ModalHeader } from "./design/Modal";
 import { Button } from "./design/Button";
 import { useAuth } from "./stores/useAuth";
 import { fetchTasks } from "./resources";
-import { createEffect } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
+import { ITask } from "./types";
+import { createEffect, onCleanup, Show } from "solid-js";
+import { LoginModal } from "./components/LoginModal";
 
 export function App() {
   const [auth, authActions] = useAuth();
+  const [tasks, setTasks] = createStore<ITask[]>([]);
 
-  const tasks: ITask[] = [
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-    {
-      name: "Clean the kitchen",
-      kind: "Schedule",
-      assigned_to: "Jonathan",
-      deadline: { Upcoming: 3 },
-    },
-  ];
+  function refreshTasks() {
+    if (auth().state === "unauthed") {
+      setTasks([]);
+      return;
+    }
 
-  const result = authActions.fetchWithToken(fetchTasks, {});
+    authActions.fetchWithToken(fetchTasks, {}).then((tasks) => {
+      if (tasks.k !== "ok") return console.error(tasks.value);
+
+      setTasks(reconcile(tasks.value, { key: "name", merge: true }));
+    });
+  }
+
+  createEffect(() => {
+    refreshTasks();
+    const interval = setInterval(refreshTasks, 10000);
+    onCleanup(() => clearInterval(interval));
+  });
 
   return (
     <div class={styles.page}>
-      <Modal open={auth().state === "unauthed"}>
-        <ModalHeader>Login</ModalHeader>
-        Hello, World!
-        <ModalActions>
-          <FlexGap />
-          <Button onClick={() => authActions.login("Test User", "testpw123")}>
-            Login
-          </Button>
-        </ModalActions>
-      </Modal>
-      <Header>
+      <LoginModal />
+      <Header
+        menu={[
+          {
+            type: "link",
+            name: "Jellyfin",
+            url: "http://192.168.0.138:8096/web/index.html",
+          },
+          {
+            type: "action",
+            name: "Logout",
+            onClick: () => authActions.logout(),
+          },
+        ]}
+      >
         Tasks
-        <FlexGap />
-        <IconButton
-          aria-label="Open Menu"
-          icon={<BsChevronDown aria-hidden="true" />}
-        />
       </Header>
       <TaskList tasks={tasks} />
     </div>

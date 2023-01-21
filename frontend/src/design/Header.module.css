@@ -1,7 +1,14 @@
 .header {
   composes: font-heading padding-default text-h1 from "./_atoms.module.css";
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   text-transform: uppercase;
   background-color: var(--color-orange);
   color: var(--color-off-black);
+}
+
+.main {
+  display: flex;
+  justify-content: space-between;
 }

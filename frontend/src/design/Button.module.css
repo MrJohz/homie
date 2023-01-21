@@ -1,5 +1,5 @@
 .base-button {
-  composes: text-small padding-span shadow-small from "./_atoms.module.css";
+  composes: text-small padding-span shadow-small focus-outline-default from "./_atoms.module.css";
   text-transform: uppercase;
   cursor: pointer;
   user-select: none;
@@ -17,10 +17,6 @@
   --border-color: currentColor;
   background-color: var(--color-off-white);
   color: var(--color-blue);
-}
-
-.base-button:focus-visible {
-  outline: solid 2px currentColor;
 }
 
 .base-button:hover {

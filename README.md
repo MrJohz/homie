@@ -5,7 +5,8 @@
 - [ ] Come up with a better name
 - [ ] Allow connections from local network without token auth?
 - [ ] Loading indicators on buttons (changing background?)
-- [ ] Inputs design
+- [ ] Animation for input errors
+- [ ] Handle connection/auth/etc errors more clearly
 - [ ] Desktop version
 - [ ] Filters (and searching?)
 - [ ] Logout functionality

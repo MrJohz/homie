@@ -12,7 +12,7 @@
 }
 
 .modal {
-  composes: padding-small border-default gap-small big-width-1 from "./_atoms.module.css";
+  composes: padding-small border-default gap-default big-width-1 from "./_atoms.module.css";
   --border-color: var(--color-orange);
   display: flex;
   flex-direction: column;
@@ -21,11 +21,11 @@
 .modalHeader {
   composes: -margin-small padding-small text-h2 font-heading from "./_atoms.module.css";
   background-color: var(--color-orange);
-  margin-bottom: 0;
+  margin-bottom: -0.5rem;
 }
 
 .modalActions {
-  composes: gap-small from "./_atoms.module.css";
+  composes: gap-default from "./_atoms.module.css";
   display: flex;
   margin-top: 0;
 }

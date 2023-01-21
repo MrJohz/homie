@@ -3,6 +3,7 @@
   --color-blue: #1d6363;
   --color-yellow: #e9d758;
   --color-orange: #ff8552;
+  --color-red: #841515;
   --color-off-white: #e6e6e6;
   --color-off-black: #39393a;
   --color-white: white;
@@ -53,6 +54,7 @@
 
 :root {
   --border-color: currentColor;
+  --outline-color: currentColor;
 }
 .border-default {
   border-width: 2px;
@@ -64,6 +66,9 @@
   border-style: solid;
   border-color: var(--border-color);
 }
+.focus-outline-default:focus-visible {
+  outline: solid 2px var(--outline-color);
+}
 
 :root {
   --shadow-adjustment: 0px;
@@ -73,7 +78,6 @@
     calc(0.25rem - var(--shadow-adjustment)) 0 0 var(--color-off-black);
 }
 .shadow-default {
-  --shadow-adjustment: 0px;
   box-shadow: calc(0.5rem - var(--shadow-adjustment))
     calc(0.5rem - var(--shadow-adjustment)) 0 0 var(--color-off-black);
 }
@@ -84,6 +88,7 @@
 }
 .font-body {
   font-family: "Quicksand", sans-serif;
+  text-transform: lowercase;
 }
 
 .big-width-1 {

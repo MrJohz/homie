@@ -44,21 +44,25 @@ type AuthActions = {
     username: string,
     password: string
   ): Promise<Result<void, "BAD_CONNECTION" | "BAD_AUTH">>;
+  logout(): Promise<Result<void, "BAD_CONNECTION">>;
   fetchWithToken<Arg extends Record<string, unknown>, T, Err extends string>(
     func: (arg: Arg & { token: string }) => Promise<Result<T, Err>>,
     args: Arg
   ): Promise<Result<T, Err | "BAD_AUTH">>;
 };
 
+const notUsable = () => {
+  throw new Error(
+    "AuthActions are not usable at this time (is the context loaded?)"
+  );
+};
+
 const AuthContext = createContext<readonly [Accessor<AuthState>, AuthActions]>([
   () => ({ state: "unauthed" as const }),
   {
-    login: () => {
-      throw new Error("not usable");
-    },
-    fetchWithToken: () => {
-      throw new Error("not usable");
-    },
+    login: notUsable,
+    logout: notUsable,
+    fetchWithToken: notUsable,
   } satisfies AuthActions,
 ]);
 
@@ -83,6 +87,10 @@ export function AuthProvider(props: { children?: JSX.Element }) {
             if (status.k !== "ok") return status;
 
             setState({ state: "authed", username, token: status.value });
+            return { k: "ok", value: undefined };
+          },
+          async logout(): Promise<Result<void, "BAD_CONNECTION">> {
+            setState({ state: "unauthed" });
             return { k: "ok", value: undefined };
           },
           async fetchWithToken(func, args) {
