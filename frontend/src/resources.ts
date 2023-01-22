@@ -121,3 +121,26 @@ export async function fetchTasks(args: {
     ],
   };
 }
+
+export async function updateTask(args: {
+  token: string;
+  taskName: string;
+  doneBy: string;
+}): Promise<Result<ITask, "BAD_AUTH" | "BAD_CONNECTION">> {
+  const response = await fetchWrapper(
+    `/api/tasks/actions/mark_task_done/${encodeURIComponent(
+      args.taskName
+    )}?by=${encodeURIComponent(args.doneBy)}`,
+    { method: "POST", headers: { token: args.token } }
+  );
+  if (response.k === "err") return response;
+
+  if (!response.value.ok) {
+    return {
+      k: "err",
+      value: "BAD_AUTH",
+    };
+  }
+
+  return { k: "ok", value: await response.value.json() };
+}

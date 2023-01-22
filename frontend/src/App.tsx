@@ -50,7 +50,12 @@ export function App() {
       >
         Tasks
       </Header>
-      <TaskList tasks={tasks} />
+      <TaskList
+        tasks={tasks}
+        onUpdate={(newTasks) =>
+          setTasks(reconcile(newTasks, { key: "name", merge: true }))
+        }
+      />
     </div>
   );
 }

@@ -5,4 +5,5 @@ export type ITask = {
   deadline: { Overdue: number } | { Upcoming: number };
   length_days: number;
   last_completed: string;
+  participants: string[];
 };

@@ -4,10 +4,20 @@ import { Show } from "solid-js";
 
 import styles from "./Error.module.css";
 
-export function Error(props: { class?: string; error?: string | null }) {
+export function Error(props: {
+  class?: string;
+  error?: string | null;
+  mergeRight?: boolean;
+}) {
   return (
     <Show when={props.error !== null}>
-      <span class={clsx(styles.error, props.class)}>
+      <span
+        class={clsx(
+          styles.error,
+          props.class,
+          props.mergeRight && styles.mergeRight
+        )}
+      >
         <BsExclamationCircle />
         {props.error}
       </span>

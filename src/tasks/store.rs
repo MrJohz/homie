@@ -64,6 +64,11 @@ impl From<SavedTask> for Task {
             .into(),
             length_days: task.duration.weeks * 7,
             last_completed: task.last_completed.date,
+            participants: task
+                .participants
+                .into_iter()
+                .map(|p| p.as_str().into())
+                .collect(),
         }
     }
 }
@@ -89,8 +94,12 @@ impl Store {
         Ok(task)
     }
 
-    async fn store(&self, tasks: Vec<SavedTask>) -> Result<(), TaskStoreError> {
-        fs::write(&self.path, toml::to_vec(&TaskToml { task: tasks }).unwrap()).await?;
+    async fn store(&self, tasks: &[SavedTask]) -> Result<(), TaskStoreError> {
+        fs::write(
+            &self.path,
+            toml::to_vec(&TaskToml { task: tasks.into() }).unwrap(),
+        )
+        .await?;
         Ok(())
     }
 
@@ -117,7 +126,7 @@ impl Store {
         &self,
         task_name: &str,
         person: Option<&str>,
-    ) -> Result<(), TaskStoreError> {
+    ) -> Result<Task, TaskStoreError> {
         let mut tasks = self.load().await?;
         if let Some(task) = tasks.iter_mut().find(|task| task.name == task_name) {
             if let Some(person) = person {
@@ -137,11 +146,12 @@ impl Store {
                     };
                 }
             }
+            let ret = task.clone().into();
+            self.store(tasks.as_slice()).await?;
+            Ok(ret)
         } else {
             Err(TaskStoreError::UnknownTaskName(task_name.into()))?
         }
-        self.store(tasks).await?;
-        Ok(())
     }
 }
 
@@ -160,6 +170,10 @@ mod tests {
         file.write_all(&toml::to_vec(&TaskToml { task: tasks }).unwrap())
             .unwrap();
         file
+    }
+
+    fn heapless_vec(v: Vec<impl Into<String>>) -> heapless::Vec<heapless::String<40>, 10> {
+        v.into_iter().map(|i| i.into().as_str().into()).collect()
     }
 
     #[tokio::test]
@@ -193,6 +207,7 @@ mod tests {
                 deadline: Deadline::Upcoming(12),
                 length_days: 14,
                 last_completed: (Local::now() - Duration::days(2)).date_naive(),
+                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -248,6 +263,7 @@ mod tests {
                 deadline: Deadline::Upcoming(5),
                 length_days: 7,
                 last_completed: (Local::now() - Duration::days(2)).date_naive(),
+                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
         assert_eq!(
@@ -259,6 +275,7 @@ mod tests {
                 deadline: Deadline::Upcoming(5),
                 length_days: 7,
                 last_completed: (Local::now() - Duration::days(2)).date_naive(),
+                participants: heapless_vec(vec!["Bob", "Kevin", "Samantha"]),
             }]
         );
         assert_eq!(
@@ -270,6 +287,7 @@ mod tests {
                 deadline: Deadline::Upcoming(5),
                 length_days: 7,
                 last_completed: (Local::now() - Duration::days(2)).date_naive(),
+                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -297,6 +315,7 @@ mod tests {
                 deadline: Deadline::Upcoming(14),
                 length_days: 14,
                 last_completed: (Local::now()).date_naive(),
+                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -327,6 +346,7 @@ mod tests {
                 deadline: Deadline::Upcoming(14),
                 length_days: 14,
                 last_completed: (Local::now()).date_naive(),
+                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -354,6 +374,7 @@ mod tests {
                 deadline: Deadline::Upcoming(18), // = 4 (days remaining of original task) + 14 (length of task)
                 length_days: 14,
                 last_completed: (Local::now() + Duration::days(4)).date_naive(),
+                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -381,6 +402,7 @@ mod tests {
                 deadline: Deadline::Upcoming(10), // = 14 (length of task) - 4 (days remaining of original task)
                 length_days: 14,
                 last_completed: (Local::now() - Duration::days(4)).date_naive(),
+                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }

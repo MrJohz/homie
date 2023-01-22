@@ -1,6 +1,7 @@
 use chrono::{Duration, NaiveDate};
 
 type String = heapless::String<40>;
+type Vec<T> = heapless::Vec<T, 10>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Routine {
@@ -33,4 +34,5 @@ pub struct Task {
     pub deadline: Deadline,
     pub length_days: u16,
     pub last_completed: NaiveDate,
+    pub participants: Vec<String>,
 }

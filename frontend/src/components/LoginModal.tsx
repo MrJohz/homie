@@ -6,8 +6,6 @@ import { InputRow } from "../design/InputRow";
 import { Modal, ModalHeader, ModalActions } from "../design/Modal";
 import { useAuth } from "../stores/useAuth";
 
-import styles from "./LoginModal.module.css";
-
 export function LoginModal() {
   const [auth, authActions] = useAuth();
   const [username, setUsername] = createSignal("");
@@ -37,6 +35,7 @@ export function LoginModal() {
         <ModalHeader>Login</ModalHeader>
         <Form onSubmit={login}>
           <InputRow
+            type="text"
             label="Username"
             value={username()}
             onInput={(e) => setUsername(e.currentTarget.value)}
@@ -49,8 +48,8 @@ export function LoginModal() {
             onInput={(e) => setPassword(e.currentTarget.value)}
             validate={[validateNonEmptyString]}
           />
-          <ModalActions class={styles.actions}>
-            <Error class={styles.error} error={error()} />
+          <ModalActions>
+            <Error mergeRight error={error()} />
             <Button type="submit" variant="subtle">
               Login
             </Button>

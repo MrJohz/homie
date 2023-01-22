@@ -5,8 +5,11 @@ import { FlexGap } from "../design/FlexGap";
 import { formatDate, formatRelativeDate } from "../stores/formatting";
 import { add } from "date-fns";
 import clsx from "clsx";
+import { TaskDoneModal } from "./TaskDoneModal";
+import { createEffect, createSignal } from "solid-js";
 
-export function Task(props: { task: ITask }) {
+export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
+  const [isOpen, setOpen] = createSignal(false);
   const dueDate = () => {
     const lastCompleted = new Date(props.task.last_completed);
     if (props.task.kind === "Interval") {
@@ -32,8 +35,17 @@ export function Task(props: { task: ITask }) {
           textContent={dueDate()}
         />
         <FlexGap />
-        <Button>Done</Button>
+        <Button onClick={[setOpen, true]}>Done</Button>
       </div>
+      <TaskDoneModal
+        open={isOpen()}
+        task={props.task}
+        onCancel={() => setOpen(false)}
+        onConfirm={(task) => {
+          setOpen(false);
+          props.onUpdate(task);
+        }}
+      />
     </div>
   );
 }

@@ -42,12 +42,12 @@ async fn mark_task_done(
     Path(task): Path<String>,
     Query(query): Query<MarkTaskDoneQuery>,
     State(store): State<Store>,
-) -> Result<Json<Vec<Task>>, TaskStoreError> {
-    match query.by {
+) -> Result<Json<Task>, TaskStoreError> {
+    let task = match query.by {
         Some(q) => store.mark_task_as_done_by(&task, Some(q.as_str())).await?,
         None => store.mark_task_as_done_by(&task, None).await?,
-    }
-    store.tasks().await.map(Json)
+    };
+    Ok(Json(task))
 }
 
 pub async fn routes() -> Router {
