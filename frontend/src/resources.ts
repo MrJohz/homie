@@ -64,62 +64,7 @@ export async function fetchTasks(args: {
     };
   }
 
-  const tasks = await response.value.json();
-
-  return {
-    k: "ok",
-    value: [
-      ...tasks,
-      {
-        name: "Test Task Tomorrow",
-        assigned_to: "Jonathan",
-        deadline: { Upcoming: 1 },
-        kind: "Interval",
-        last_completed: new Date(),
-        length_days: 1,
-      },
-      {
-        name: "Test Task Today",
-        assigned_to: "Jonathan",
-        deadline: { Upcoming: 0 },
-        kind: "Interval",
-        last_completed: endOfYesterday(),
-        length_days: 1,
-      },
-      {
-        name: "Test Task Yesterday",
-        assigned_to: "Jonathan",
-        deadline: { Overdue: 1 },
-        kind: "Interval",
-        last_completed: sub(new Date(), { days: 2 }),
-        length_days: 1,
-      },
-      {
-        name: "Test Task Tomorrow",
-        assigned_to: "Jonathan",
-        deadline: { Upcoming: 1 },
-        kind: "Schedule",
-        last_completed: new Date(),
-        length_days: 1,
-      },
-      {
-        name: "Test Task Today",
-        assigned_to: "Jonathan",
-        deadline: { Upcoming: 0 },
-        kind: "Schedule",
-        last_completed: endOfYesterday(),
-        length_days: 1,
-      },
-      {
-        name: "Test Task Yesterday",
-        assigned_to: "Jonathan",
-        deadline: { Overdue: 1 },
-        kind: "Schedule",
-        last_completed: sub(new Date(), { days: 2 }),
-        length_days: 1,
-      },
-    ],
-  };
+  return { k: "ok", value: await response.value.json() };
 }
 
 export async function updateTask(args: {
