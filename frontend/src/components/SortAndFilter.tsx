@@ -14,17 +14,24 @@ type FilterSettings = {
   assignee: false | string;
 };
 
-export function generateSortFilter(
+function timeLeft(task: ITask): number {
+  if ("Overdue" in task.deadline) return -task.deadline.Overdue;
+  return task.deadline.Upcoming;
+}
+
+function generateSortFilter(
   sort: SortSettings,
   filter: FilterSettings
 ): SortFilter {
   return (tasks) => {
-    return tasks.filter((task) => {
-      if (filter.assignee === false) return true;
-      if (task.assigned_to !== filter.assignee) return false;
+    return tasks
+      .filter((task) => {
+        if (filter.assignee === false) return true;
+        if (task.assigned_to !== filter.assignee) return false;
 
-      return true;
-    });
+        return true;
+      })
+      .sort((task1, task2) => timeLeft(task1) - timeLeft(task2));
   };
 }
 

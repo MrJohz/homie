@@ -6,12 +6,17 @@
 - [ ] Allow connections from local network without token auth?
 - [ ] Loading indicators on buttons (changing background?)
 - [ ] Animation for input errors
+- [ ] Animation for done tasks
 - [ ] Handle connection/auth/etc errors more clearly
 - [ ] Desktop version
-- [ ] Filters (and searching?)
-- [ ] Logout functionality
+- [x] Filters/sorting (and searching?)
+  - [ ] But actually implement it
+- [x] Logout functionality
 - [ ] Some level of token expiry and deletion
+- [ ] Move tasks into SQLite
 - [ ] Load users from a file somewhere
+- [ ] History (and undo)
+- [ ] Auto build/deploy (via Docker?)
 
 ## How to build
 
