@@ -5,6 +5,7 @@ import {
   createSignal,
   createUniqueId,
   JSX,
+  Show,
   useContext,
 } from "solid-js";
 
@@ -52,40 +53,42 @@ export function Modal(props: {
   });
 
   return (
-    <dialog
-      class={styles.modalWrapper}
-      ref={setDialogRef}
-      aria-labelledBy={labelledBy()}
-      onClick={(e) => {
-        if (e.target !== e.currentTarget) return; // bubbling is happening
+    <Show when={props.open}>
+      <dialog
+        class={styles.modalWrapper}
+        ref={setDialogRef}
+        aria-labelledBy={labelledBy()}
+        onClick={(e) => {
+          if (e.target !== e.currentTarget) return; // bubbling is happening
 
-        // At this point, there is no pixel of "dialog-element" that isn't covered
-        // by another child div, therefore the user must have clicked on the
-        // backdrop (see e.g. https://stackoverflow.com/a/40551169)
-        e.preventDefault();
-        e.currentTarget.dispatchEvent(
-          new Event("cancel", {
-            bubbles: false,
-            cancelable: true,
-            composed: false,
-          })
-        );
-      }}
-      onClose={(e) => {
-        if (e.currentTarget.returnValue === SELF_CLOSE_SENTINEL) return;
+          // At this point, there is no pixel of "dialog-element" that isn't covered
+          // by another child div, therefore the user must have clicked on the
+          // backdrop (see e.g. https://stackoverflow.com/a/40551169)
+          e.preventDefault();
+          e.currentTarget.dispatchEvent(
+            new Event("cancel", {
+              bubbles: false,
+              cancelable: true,
+              composed: false,
+            })
+          );
+        }}
+        onClose={(e) => {
+          if (e.currentTarget.returnValue === SELF_CLOSE_SENTINEL) return;
 
-        e.preventDefault();
-        e.currentTarget.showModal();
-      }}
-      onCancel={(e) => {
-        e.preventDefault();
-        callHandler(props.onCancel, e);
-      }}
-    >
-      <ModalContext.Provider value={{ setLabelledBy }}>
-        <div class={styles.modal}>{props.children}</div>
-      </ModalContext.Provider>
-    </dialog>
+          e.preventDefault();
+          e.currentTarget.showModal();
+        }}
+        onCancel={(e) => {
+          e.preventDefault();
+          callHandler(props.onCancel, e);
+        }}
+      >
+        <ModalContext.Provider value={{ setLabelledBy }}>
+          <div class={styles.modal}>{props.children}</div>
+        </ModalContext.Provider>
+      </dialog>
+    </Show>
   );
 }
 

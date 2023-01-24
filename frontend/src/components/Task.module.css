@@ -2,6 +2,9 @@
   composes: border-default from "../design/_atoms.module.css";
   --border-color: var(--color-yellow);
   text-transform: lowercase;
+  position: relative;
+  opacity: 1;
+  transition: margin 150ms, opacity 150ms;
 }
 
 .taskboxHeader {

@@ -9,7 +9,9 @@ import styles from "./Task.module.css";
 import { TaskDoneModal } from "./TaskDoneModal";
 
 export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
+  const [element, setElement] = createSignal<HTMLDivElement | null>(null);
   const [isOpen, setOpen] = createSignal(false);
+  const [isTransitioning, setTransitioning] = createSignal(false);
   const dueDate = () => {
     const lastCompleted = new Date(props.task.last_completed);
     if (props.task.kind === "Interval") {
@@ -24,7 +26,14 @@ export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
     }
   };
   return (
-    <div class={styles.taskbox}>
+    <div
+      ref={setElement}
+      class={styles.taskbox}
+      style={{
+        "margin-bottom": isTransitioning() ? `-41px` : undefined,
+        opacity: isTransitioning() ? 0 : undefined,
+      }}
+    >
       <div class={styles.taskboxHeader}>
         <span>{props.task.name}</span>
         <span>{props.task.assigned_to}</span>
@@ -43,7 +52,24 @@ export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
         onCancel={() => setOpen(false)}
         onConfirm={(task) => {
           setOpen(false);
-          props.onUpdate(task);
+          const e = element();
+          if (e == null) return props.onUpdate(task);
+
+          e.style.marginBottom = -e.offsetHeight + "px";
+          e.style.opacity = "0";
+          e.addEventListener(
+            "transitionend",
+            () => {
+              e.style.marginBottom = "";
+              e.style.opacity = "";
+              props.onUpdate(task);
+            },
+            {
+              once: true,
+            }
+          );
+
+          // props.onUpdate(task);
         }}
       />
     </div>
