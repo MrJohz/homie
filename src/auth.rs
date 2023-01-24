@@ -200,6 +200,5 @@ pub async fn login_middleware<B: Debug>(
         return error.into_response();
     }
 
-    let response = next.run(request).await;
-    response
+    next.run(request).await
 }
