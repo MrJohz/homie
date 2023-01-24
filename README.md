@@ -19,6 +19,7 @@
 - [ ] Load users from a file somewhere
 - [ ] History (and undo)
 - [ ] Auto build/deploy (via Docker?)
+- [ ] Better cache-control headers
 
 ## How to build
 
