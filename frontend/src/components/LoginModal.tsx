@@ -3,7 +3,7 @@ import { Button } from "../design/Button";
 import { Error } from "../design/Error";
 import { Form, validateNonEmptyString } from "../design/Form";
 import { InputRow } from "../design/InputRow";
-import { Modal, ModalHeader, ModalActions } from "../design/Modal";
+import { Modal, ModalActions, ModalHeader } from "../design/Modal";
 import { useAuth } from "../stores/useAuth";
 
 export function LoginModal() {
@@ -22,10 +22,10 @@ export function LoginModal() {
       return;
     }
 
-    if (response.value === "BAD_AUTH") {
-      setError("Invalid login details");
-    } else if (response.value === "BAD_CONNECTION") {
+    if (response.value[0] === "BAD_CONNECTION") {
       setError("Server error, try again");
+    } else {
+      setError("Invalid login details");
     }
   }
 

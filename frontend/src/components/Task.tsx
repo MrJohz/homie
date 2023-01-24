@@ -1,12 +1,12 @@
-import { ITask } from "../types";
+import clsx from "clsx";
+import { add } from "date-fns";
+import { createSignal } from "solid-js";
 import { Button } from "../design/Button";
-import styles from "./Task.module.css";
 import { FlexGap } from "../design/FlexGap";
 import { formatDate, formatRelativeDate } from "../stores/formatting";
-import { add } from "date-fns";
-import clsx from "clsx";
+import { ITask } from "../types";
+import styles from "./Task.module.css";
 import { TaskDoneModal } from "./TaskDoneModal";
-import { createEffect, createSignal } from "solid-js";
 
 export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
   const [isOpen, setOpen] = createSignal(false);

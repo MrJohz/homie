@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { ITask } from "../types";
 import {
   DEFAULT_SORT_FILTER,
@@ -15,7 +15,9 @@ export function TaskList(props: {
   const [filter, setFilter] = createSignal<SortFilter>(DEFAULT_SORT_FILTER);
   return (
     <div class={styles.taskList}>
-      <SortAndFilter tasks={props.tasks} onChange={setFilter} />
+      <Show when={props.tasks.length > 0}>
+        <SortAndFilter tasks={props.tasks} onChange={setFilter} />
+      </Show>
       <For each={filter()(props.tasks)}>
         {(task) => (
           <Task

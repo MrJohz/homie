@@ -1,4 +1,4 @@
-import { createEffect, createResource, createSignal, on } from "solid-js";
+import { createEffect, createSignal, on } from "solid-js";
 import { Button } from "../design/Button";
 import { Error } from "../design/Error";
 import { Form } from "../design/Form";
@@ -38,9 +38,9 @@ export function TaskDoneModal(props: {
           });
           if (result.k == "err") {
             return setError(
-              result.value === "BAD_CONNECTION"
-                ? "Connection down"
-                : "Unauthorized"
+              result.value[0] === "BAD_AUTH"
+                ? "Unauthorized"
+                : "Connection down"
             );
           }
 

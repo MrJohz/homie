@@ -3,7 +3,6 @@ import {
   isToday,
   isTomorrow,
   isYesterday,
-  startOfDay,
 } from "date-fns";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {

@@ -1,4 +1,3 @@
-import { endOfYesterday, startOfTomorrow, sub } from "date-fns";
 import { ITask } from "./types";
 
 export type Success<T> = { k: "ok"; value: T };
@@ -12,7 +11,7 @@ type ExtendedRequestInit = Omit<RequestInit, "body"> & {
 async function fetchWrapper(
   url: string,
   details: ExtendedRequestInit
-): Promise<Result<Response, "BAD_CONNECTION">> {
+): Promise<Result<Response, ["BAD_CONNECTION", string]>> {
   try {
     const response = await fetch(url, {
       ...details,
@@ -24,14 +23,19 @@ async function fetchWrapper(
     });
     return { k: "ok", value: response };
   } catch (e) {
-    return { k: "err", value: "BAD_CONNECTION" };
+    return { k: "err", value: ["BAD_CONNECTION", "could not connect to API"] };
   }
 }
 
 export async function createToken(
   username: string,
   password: string
-): Promise<Success<string> | Error<"BAD_CONNECTION" | "BAD_AUTH">> {
+): Promise<
+  | Success<string>
+  | Error<
+      ["BAD_CONNECTION", string] | ["BAD_AUTH", string] | ["BAD_SERVER", string]
+    >
+> {
   const response = await fetchWrapper("/api/auth/login", {
     method: "POST",
     body: { username, password },
@@ -39,9 +43,12 @@ export async function createToken(
   if (response.k === "err") return response;
 
   if (!response.value.ok) {
+    const error = await response.value.text();
     return {
       k: "err",
-      value: "BAD_AUTH",
+      value: error.includes("token")
+        ? ["BAD_AUTH", error]
+        : ["BAD_SERVER", error],
     };
   }
 
@@ -50,7 +57,12 @@ export async function createToken(
 
 export async function fetchTasks(args: {
   token: string;
-}): Promise<Result<ITask[], "BAD_AUTH" | "BAD_CONNECTION">> {
+}): Promise<
+  Result<
+    ITask[],
+    ["BAD_CONNECTION", string] | ["BAD_AUTH", string] | ["BAD_SERVER", string]
+  >
+> {
   const response = await fetchWrapper("/api/tasks", {
     method: "GET",
     headers: { token: args.token },
@@ -58,9 +70,12 @@ export async function fetchTasks(args: {
   if (response.k === "err") return response;
 
   if (!response.value.ok) {
+    const error = await response.value.text();
     return {
       k: "err",
-      value: "BAD_AUTH",
+      value: error.includes("token")
+        ? ["BAD_AUTH", error]
+        : ["BAD_SERVER", error],
     };
   }
 
@@ -71,7 +86,12 @@ export async function updateTask(args: {
   token: string;
   taskName: string;
   doneBy: string;
-}): Promise<Result<ITask, "BAD_AUTH" | "BAD_CONNECTION">> {
+}): Promise<
+  Result<
+    ITask,
+    ["BAD_CONNECTION", string] | ["BAD_AUTH", string] | ["BAD_SERVER", string]
+  >
+> {
   const response = await fetchWrapper(
     `/api/tasks/actions/mark_task_done/${encodeURIComponent(
       args.taskName
@@ -81,9 +101,12 @@ export async function updateTask(args: {
   if (response.k === "err") return response;
 
   if (!response.value.ok) {
+    const error = await response.value.text();
     return {
       k: "err",
-      value: "BAD_AUTH",
+      value: error.includes("token")
+        ? ["BAD_AUTH", error]
+        : ["BAD_SERVER", error],
     };
   }
 

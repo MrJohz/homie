@@ -1,17 +1,11 @@
 import clsx from "clsx";
 import {
-  BsExclamation,
-  BsExclamationCircle,
-  BsExclamationLg,
-} from "solid-icons/bs";
-import {
   createEffect,
   createSignal,
   For,
   JSX,
   Match,
   onCleanup,
-  Show,
   splitProps,
   Switch,
   useContext,

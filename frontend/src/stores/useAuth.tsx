@@ -43,27 +43,32 @@ type AuthActions = {
   login(
     username: string,
     password: string
-  ): Promise<Result<void, "BAD_CONNECTION" | "BAD_AUTH">>;
-  logout(): Promise<Result<void, "BAD_CONNECTION">>;
+  ): Promise<
+    Result<
+      void,
+      ["BAD_CONNECTION", string] | ["BAD_AUTH", string] | ["BAD_SERVER", string]
+    >
+  >;
+  logout(): Promise<Result<void, ["BAD_CONNECTION", string]>>;
   fetchWithToken<Arg extends Record<string, unknown>, T, Err extends string>(
-    func: (arg: Arg & { token: string }) => Promise<Result<T, Err>>,
+    func: (arg: Arg & { token: string }) => Promise<Result<T, [Err, string]>>,
     args: Arg
-  ): Promise<Result<T, Err | "BAD_AUTH">>;
+  ): Promise<Result<T, [Err, string] | ["BAD_AUTH", string]>>;
 };
 
-const notUsable = () => {
+const notUsable = (): never => {
   throw new Error(
     "AuthActions are not usable at this time (is the context loaded?)"
   );
 };
 
 const AuthContext = createContext<readonly [Accessor<AuthState>, AuthActions]>([
-  () => ({ state: "unauthed" as const }),
+  () => ({ state: "unauthed" } as any),
   {
     login: notUsable,
     logout: notUsable,
     fetchWithToken: notUsable,
-  } satisfies AuthActions,
+  } as any,
 ]);
 
 export function AuthProvider(props: { children?: JSX.Element }) {
@@ -79,27 +84,28 @@ export function AuthProvider(props: { children?: JSX.Element }) {
       value={[
         state,
         {
-          async login(
-            username: string,
-            password: string
-          ): Promise<Result<void, "BAD_CONNECTION" | "BAD_AUTH">> {
+          async login(username, password) {
             const status = await createToken(username, password);
             if (status.k !== "ok") return status;
 
             setState({ state: "authed", username, token: status.value });
             return { k: "ok", value: undefined };
           },
-          async logout(): Promise<Result<void, "BAD_CONNECTION">> {
+          async logout() {
             setState({ state: "unauthed" });
             return { k: "ok", value: undefined };
           },
           async fetchWithToken(func, args) {
             const authState = state();
             if (authState.state === "unauthed")
-              return { k: "err", value: "BAD_AUTH" };
+              return {
+                k: "err",
+                value: ["BAD_AUTH", "not authorized to make this request"],
+              };
 
             const status = await func({ ...args, token: authState.token });
-            if (status.k === "ok" || status.value !== "BAD_AUTH") return status;
+            if (status.k === "ok" || status.value[0] !== "BAD_AUTH")
+              return status;
 
             setState({ state: "unauthed" });
             return status;

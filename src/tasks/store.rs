@@ -97,7 +97,9 @@ impl Store {
     async fn store(&self, tasks: &[SavedTask]) -> Result<(), TaskStoreError> {
         fs::write(
             &self.path,
-            toml::to_vec(&TaskToml { task: tasks.into() }).unwrap(),
+            toml::to_string(&TaskToml { task: tasks.into() })
+                .unwrap()
+                .as_bytes(),
         )
         .await?;
         Ok(())
@@ -167,8 +169,12 @@ mod tests {
 
     fn file_with_tasks(tasks: Vec<SavedTask>) -> NamedTempFile {
         let mut file = tempfile::NamedTempFile::new().unwrap();
-        file.write_all(&toml::to_vec(&TaskToml { task: tasks }).unwrap())
-            .unwrap();
+        file.write_all(
+            toml::to_string(&TaskToml { task: tasks })
+                .unwrap()
+                .as_bytes(),
+        )
+        .unwrap();
         file
     }
 
