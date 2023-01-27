@@ -23,6 +23,7 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 uuid = { version = "1.2.2", features = ["v4", "serde"] }
 include_dir = "0.7.3"
+clap = { version = "4.1.4", features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3.3.0"
