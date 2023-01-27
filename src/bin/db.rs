@@ -1,7 +1,5 @@
-use sqlx::migrate::Migrator;
-
-static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
-
-fn main() {
-    println!("Hello, World!")
+#[tokio::main]
+async fn main() {
+    let conn = homie::db::create_connection().await;
+    homie::db::migrate(conn).await.unwrap();
 }

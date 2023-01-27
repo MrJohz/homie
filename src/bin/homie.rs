@@ -1,10 +1,8 @@
 use std::{ffi::OsStr, path::Path};
 
 use axum::{http::header, middleware, routing::get, Router};
+use homie::{auth, db, tasks};
 use include_dir::{include_dir, Dir};
-
-mod auth;
-mod tasks;
 
 static ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/frontend/dist");
 static MIME_JAVASCRIPT: &'_ str = "text/javascript";
@@ -51,9 +49,7 @@ async fn main() {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let conn = sqlx::SqlitePool::connect("sqlite://data/homie.db")
-        .await
-        .unwrap();
+    let conn = db::create_connection().await;
     let auth = auth::AuthStore::new(conn);
 
     let app = Router::new();
