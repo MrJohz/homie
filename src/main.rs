@@ -1,6 +1,5 @@
 use std::{ffi::OsStr, path::Path};
 
-use auth::AuthState;
 use axum::{http::header, middleware, routing::get, Router};
 use include_dir::{include_dir, Dir};
 
@@ -52,7 +51,10 @@ async fn main() {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let auth_state = AuthState::from_path("data/auth.db").await;
+    let conn = sqlx::SqlitePool::connect("sqlite://data/homie.db")
+        .await
+        .unwrap();
+    let auth = auth::AuthStore::new(conn);
 
     let app = Router::new();
     let app = apply_routes(app, &ASSETS);
@@ -62,11 +64,11 @@ async fn main() {
             tasks::routes()
                 .await
                 .route_layer(middleware::from_fn_with_state(
-                    auth_state.clone(),
+                    auth.clone(),
                     auth::login_middleware,
                 )),
         )
-        .nest("/api/auth", auth::routes(auth_state.clone()).await)
+        .nest("/api/auth", auth::routes(auth.clone()))
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
     axum::Server::bind(&"0.0.0.0:3030".parse().unwrap())
