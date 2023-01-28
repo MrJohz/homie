@@ -1,10 +1,13 @@
-use std::path::PathBuf;
+use std::{iter::Peekable, path::PathBuf};
 
 use chrono::{Duration, Local, NaiveDate};
-use sqlx::{Row, SqlitePool};
+use sqlx::{sqlite::SqliteRow, Row, SqlitePool};
 use tokio::fs;
 
-use super::types::{Deadline, Routine, Task};
+use super::{
+    time::today,
+    types::{Deadline, Routine, Task},
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum TaskStoreError {
@@ -180,6 +183,12 @@ impl TaskStore {
             *p = p.to_lowercase()
         }
 
+        let mut reversed_people = new_task.participants.clone();
+        reversed_people.reverse();
+        let prev_person = next_assignee(&reversed_people, &new_task.starts_with);
+
+        let started_time = new_task.starts_on - Duration::days(new_task.duration.into());
+
         sqlx::query(
             "INSERT INTO tasks
                 (id, task_name, kind, duration, first_done, start_assignee)
@@ -190,8 +199,8 @@ impl TaskStore {
         .bind(new_task.name)
         .bind(new_task.routine)
         .bind(new_task.duration)
-        .bind(new_task.starts_on)
-        .bind(new_task.starts_with)
+        .bind(started_time)
+        .bind(prev_person)
         .execute(&mut transaction)
         .await?;
 
@@ -244,67 +253,24 @@ FROM
         .fetch_all(&self.conn)
         .await?;
 
-        let mut task: Option<(String, Task)> = None;
         let mut results = Vec::new();
-        for row in rows {
-            match task {
-                None => {
-                    task = Some((
-                        row.get("done_by"),
-                        Task {
-                            name: row.get("name"),
-                            kind: row.get("kind"),
-                            length_days: row.get("duration"),
-                            last_completed: row.get("done_at"),
-                            participants: vec![row.get("participant")],
-                            assigned_to: String::new(),
-                            deadline: Deadline::Upcoming(0),
-                        },
-                    ));
-                }
-                Some((_, ref mut task_ref)) => {
-                    if task_ref.name == row.get::<&str, &str>("name") {
-                        task_ref.participants.push(row.get("participant"));
-                    } else {
-                        let (done_by, mut task_ref) = task.take().unwrap();
-                        task_ref.assigned_to =
-                            next_assignee(&task_ref.participants, &done_by).into();
-                        task_ref.deadline =
-                            next_deadline(task_ref.length_days, task_ref.last_completed);
-                        results.push(task_ref);
-                        task = Some((
-                            row.get("done_by"),
-                            Task {
-                                name: row.get("name"),
-                                kind: row.get("kind"),
-                                length_days: row.get("duration"),
-                                last_completed: row.get("done_at"),
-                                participants: vec![row.get("participant")],
-                                assigned_to: String::new(),
-                                deadline: Deadline::Upcoming(0),
-                            },
-                        ));
-                    }
-                }
-            }
+
+        let mut rows = rows.into_iter().peekable();
+        while let Some(task) = parse_task(&mut rows) {
+            results.push(task);
         }
 
-        if let Some((done_by, mut task_ref)) = task.take() {
-            task_ref.assigned_to = next_assignee(&task_ref.participants, &done_by).into();
-            task_ref.deadline = next_deadline(task_ref.length_days, task_ref.last_completed);
-            results.push(task_ref);
-        }
         Ok(results)
     }
 
-    // pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
-    //     Ok(self
-    //         .tasks()
-    //         .await?
-    //         .into_iter()
-    //         .filter(|task| task.assigned_to == person)
-    //         .collect())
-    // }
+    pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
+        Ok(self
+            .tasks()
+            .await?
+            .into_iter()
+            .filter(|task| task.assigned_to == person)
+            .collect())
+    }
 
     // pub async fn task(&self, task_name: &str) -> Result<Task, TaskStoreError> {
     //     let results = sqlx::query_as::<_, (String,Routine,u16,i32,u32,u32,String,String)>("
@@ -390,7 +356,40 @@ fn next_assignee<'a>(participants: &'a [String], last_completed_by: &str) -> &'a
 }
 
 fn next_deadline(task_length: u16, last_completed: NaiveDate) -> Deadline {
-    (last_completed + Duration::days(task_length.into()) - Local::now().date_naive()).into()
+    (last_completed + Duration::days(task_length.into()) - today()).into()
+}
+
+fn parse_task(rows: &mut Peekable<impl Iterator<Item = SqliteRow>>) -> Option<Task> {
+    let mut task: Option<Task> = None;
+    while let Some(row) = rows.next() {
+        match task {
+            None => {
+                task = Some(Task {
+                    name: row.get("name"),
+                    kind: row.get("kind"),
+                    length_days: row.get("duration"),
+                    last_completed: row.get("done_at"),
+                    participants: vec![row.get("participant")],
+                    assigned_to: String::new(),
+                    deadline: Deadline::Upcoming(0),
+                });
+            }
+            Some(ref mut task_ref) => {
+                task_ref.participants.push(row.get("participant"));
+            }
+        }
+
+        if rows.peek().is_none()
+            || rows.peek().unwrap().get::<&str, _>("name") != row.get::<&str, _>("name")
+        {
+            let mut task = task.take().unwrap();
+            task.assigned_to = next_assignee(&task.participants, row.get("done_by")).into();
+            task.deadline = next_deadline(task.length_days, task.last_completed);
+            return Some(task);
+        }
+    }
+
+    None
 }
 
 pub struct NewTask {
@@ -404,7 +403,7 @@ pub struct NewTask {
 
 #[cfg(test)]
 mod tests2 {
-    use crate::auth::AuthStore;
+    use crate::{auth::AuthStore, tasks::time};
 
     use super::*;
 
@@ -416,11 +415,57 @@ mod tests2 {
 
     #[sqlx::test]
     async fn test_listing_tasks_when_tasks_exist(conn: sqlx::SqlitePool) {
+        time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 10).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
-        auth_store.create_user("test_1", "").await.unwrap();
-        auth_store.create_user("test_2", "").await.unwrap();
-        assert_eq!(task_store.tasks().await.unwrap(), vec![]);
+        auth_store.create_test_user("arthur").await.unwrap();
+        auth_store.create_test_user("bob").await.unwrap();
+        auth_store.create_test_user("claire").await.unwrap();
+        task_store
+            .add_task(NewTask {
+                name: "Test Task".into(),
+                starts_with: "bob".into(),
+                routine: Routine::Interval,
+                duration: 7,
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
+                participants: vec!["arthur".into(), "bob".into(), "claire".into()],
+            })
+            .await
+            .unwrap();
+        task_store
+            .add_task(NewTask {
+                name: "Test Task 2".into(),
+                starts_with: "claire".into(),
+                routine: Routine::Interval,
+                duration: 7,
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 14).unwrap(),
+                participants: vec!["arthur".into(), "bob".into(), "claire".into()],
+            })
+            .await
+            .unwrap();
+        assert_eq!(
+            task_store.tasks().await.unwrap(),
+            vec![
+                Task {
+                    name: "Test Task".into(),
+                    assigned_to: "bob".into(),
+                    kind: Routine::Interval,
+                    deadline: Deadline::Upcoming(0),
+                    length_days: 7,
+                    last_completed: NaiveDate::from_ymd_opt(2020, 1, 3).unwrap(),
+                    participants: vec!["arthur".into(), "bob".into(), "claire".into()]
+                },
+                Task {
+                    name: "Test Task 2".into(),
+                    assigned_to: "claire".into(),
+                    kind: Routine::Interval,
+                    deadline: Deadline::Upcoming(4),
+                    length_days: 7,
+                    last_completed: NaiveDate::from_ymd_opt(2020, 1, 7).unwrap(),
+                    participants: vec!["arthur".into(), "bob".into(), "claire".into()]
+                }
+            ]
+        );
     }
 }
 

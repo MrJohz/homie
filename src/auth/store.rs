@@ -88,4 +88,16 @@ impl AuthStore {
 
         Ok(())
     }
+
+    #[cfg(test)]
+    pub async fn create_test_user(&self, username: &str) -> Result<(), AuthError> {
+        sqlx::query("INSERT INTO users (id, username, hash) VALUES (?, ?, ?)")
+            .bind(username.to_lowercase())
+            .bind(username)
+            .bind("test_user")
+            .execute(&self.conn)
+            .await?;
+
+        Ok(())
+    }
 }

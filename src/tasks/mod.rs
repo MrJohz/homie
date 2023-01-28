@@ -1,5 +1,6 @@
 mod routes;
 mod store;
+mod time;
 mod types;
 
 pub use routes::routes;
