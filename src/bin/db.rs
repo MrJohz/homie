@@ -20,20 +20,22 @@ enum Commands {
         password: String,
     },
     /// Adds a new task to the database
-    AddTasks {
+    AddTask {
         #[arg(long)]
         name: String,
         #[arg(long)]
         routine: String,
         #[arg(long)]
         duration: u16,
-        #[arg(long)]
+        #[arg(long, required = true)]
         participant: Vec<String>,
         #[arg(long)]
         starts_with: String,
         #[arg(long)]
         starts_on: chrono::NaiveDate,
     },
+    /// Provides some useful info for me
+    Debug,
 }
 
 #[tokio::main]
@@ -49,7 +51,7 @@ async fn main() {
             let store = homie::auth::AuthStore::new(conn);
             store.create_user(&name, &password).await.unwrap();
         }
-        Commands::AddTasks {
+        Commands::AddTask {
             name,
             routine,
             duration,
@@ -74,6 +76,11 @@ async fn main() {
                 })
                 .await
                 .unwrap();
+        }
+        Commands::Debug => {
+            let conn = homie::db::create_connection().await;
+            let store = homie::tasks::TaskStore::new(conn);
+            dbg!(store.tasks().await.unwrap());
         }
     }
 }

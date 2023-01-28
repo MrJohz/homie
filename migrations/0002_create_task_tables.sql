@@ -4,8 +4,8 @@ CREATE TABLE
     task_name text NOT NULL,
     kind text NOT NULL,
     duration integer NOT NULL,
-    assignee text NOT NULL,
-    created text NOT NULL
+    start_assignee text NOT NULL,
+    first_done text NOT NULL
   );
 
 CREATE TABLE

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use chrono::{Duration, Local, NaiveDate};
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 use tokio::fs;
 
 use super::types::{Deadline, Routine, Task};
@@ -182,7 +182,7 @@ impl TaskStore {
 
         sqlx::query(
             "INSERT INTO tasks
-                (id, task_name, kind, duration, created, assignee)
+                (id, task_name, kind, duration, first_done, start_assignee)
             VALUES
                 (?, ?, ?, ?, ?, ?)",
         )
@@ -213,25 +213,89 @@ impl TaskStore {
         Ok(())
     }
 
-    // pub async fn tasks(&self) -> Result<Vec<Task>, TaskStoreError> {
-    //     let rows = sqlx::query!("SELECT (task_name, tasks.id, kind, duration, users.username, completed_on) FROM tasks INNER JOIN completions ON tasks.id = completions.task_id INNER JOIN users ON users.id = completions.completed_by").fetch_all(&self.conn).await?;
-    //     let mut results = Vec::with_capacity(rows.len());
-    //     for (name, id, kind, duration, completed_by, last_completed) in rows {
-    //         let participants = sqlx::query_as::<_, (String,)>("SELECT username FROM tasks INNER JOIN task_user_link ON tasks.id = task_user_link.task_id INNER JOIN users ON user_id = users.id WHERE tasks.id = ?")
-    //         .bind(id).fetch_all(&self.conn).await?;
-    //         let participants = participants.into_iter().map(|p| p.0).collect::<Vec<_>>();
-    //         results.push(Task {
-    //             name: name.as_str().into(),
-    //             kind,
-    //             length_days: duration,
-    //             participants: participants.iter().map(|p| p.as_str().into()).collect(),
-    //             last_completed,
-    //             assigned_to: next_assignee(participants.as_slice(), &completed_by).into(),
-    //             deadline: next_deadline(duration, last_completed),
-    //         })
-    //     }
-    //     Ok(results)
-    // }
+    pub async fn tasks(&self) -> Result<Vec<Task>, TaskStoreError> {
+        let rows = sqlx::query(
+            "
+SELECT
+  tasks.task_name as name,
+  tasks.kind as kind,
+  tasks.duration as duration,
+  u_participants.username as participant,
+  tasks.first_done as first_done,
+  IFNULL(completions.completed_on, tasks.first_done) as done_at,
+  IFNULL(u_completed.username, u_assignee.username) as done_by
+FROM
+  tasks
+  INNER JOIN task_participant_link ON tasks.id = task_participant_link.task_id
+  INNER JOIN users u_participants ON u_participants.id = task_participant_link.user_id
+  INNER JOIN users u_assignee ON u_assignee.id = tasks.start_assignee
+  LEFT JOIN completions ON tasks.id = completions.task_id
+  AND completions.completed_on = (
+    Select
+      Max(completed_on)
+    from
+      completions as c2
+    where
+      c2.task_id = tasks.id
+  )
+  LEFT JOIN users u_completed ON u_completed.id = completions.completed_by
+",
+        )
+        .fetch_all(&self.conn)
+        .await?;
+
+        let mut task: Option<(String, Task)> = None;
+        let mut results = Vec::new();
+        for row in rows {
+            match task {
+                None => {
+                    task = Some((
+                        row.get("done_by"),
+                        Task {
+                            name: row.get("name"),
+                            kind: row.get("kind"),
+                            length_days: row.get("duration"),
+                            last_completed: row.get("done_at"),
+                            participants: vec![row.get("participant")],
+                            assigned_to: String::new(),
+                            deadline: Deadline::Upcoming(0),
+                        },
+                    ));
+                }
+                Some((_, ref mut task_ref)) => {
+                    if task_ref.name == row.get::<&str, &str>("name") {
+                        task_ref.participants.push(row.get("participant"));
+                    } else {
+                        let (done_by, mut task_ref) = task.take().unwrap();
+                        task_ref.assigned_to =
+                            next_assignee(&task_ref.participants, &done_by).into();
+                        task_ref.deadline =
+                            next_deadline(task_ref.length_days, task_ref.last_completed);
+                        results.push(task_ref);
+                        task = Some((
+                            row.get("done_by"),
+                            Task {
+                                name: row.get("name"),
+                                kind: row.get("kind"),
+                                length_days: row.get("duration"),
+                                last_completed: row.get("done_at"),
+                                participants: vec![row.get("participant")],
+                                assigned_to: String::new(),
+                                deadline: Deadline::Upcoming(0),
+                            },
+                        ));
+                    }
+                }
+            }
+        }
+
+        if let Some((done_by, mut task_ref)) = task.take() {
+            task_ref.assigned_to = next_assignee(&task_ref.participants, &done_by).into();
+            task_ref.deadline = next_deadline(task_ref.length_days, task_ref.last_completed);
+            results.push(task_ref);
+        }
+        Ok(results)
+    }
 
     // pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
     //     Ok(self
@@ -242,46 +306,46 @@ impl TaskStore {
     //         .collect())
     // }
 
-    pub async fn task(&self, task_name: &str) -> Result<Task, TaskStoreError> {
-        let results = sqlx::query_as::<_, (String,Routine,u16,i32,u32,u32,String,String)>("
-        SELECT
-            task_name, kind, duration, completed_year, completed_month, completed_day, task_user.username, complete_user.username
-        FROM
-            tasks
-            INNER JOIN completions ON tasks.id = completions.task_id
-            INNER JOIN task_user_link ON tasks.id = task_user_link.task_id
-            INNER JOIN users task_user on task_user_link.user_id = task_user.id
-            INNER JOIN users complete_user on completions.completed_by = complete_user.id
-        WHERE
-            tasks.id = ?")
-            .bind(task_name.to_lowercase())
-            .fetch_all(&self.conn)
-            .await?;
+    // pub async fn task(&self, task_name: &str) -> Result<Task, TaskStoreError> {
+    //     let results = sqlx::query_as::<_, (String,Routine,u16,i32,u32,u32,String,String)>("
+    //     SELECT
+    //         task_name, kind, duration, completed_year, completed_month, completed_day, task_user.username, complete_user.username
+    //     FROM
+    //         tasks
+    //         INNER JOIN completions ON tasks.id = completions.task_id
+    //         INNER JOIN task_user_link ON tasks.id = task_user_link.task_id
+    //         INNER JOIN users task_user on task_user_link.user_id = task_user.id
+    //         INNER JOIN users complete_user on completions.completed_by = complete_user.id
+    //     WHERE
+    //         tasks.id = ?")
+    //         .bind(task_name.to_lowercase())
+    //         .fetch_all(&self.conn)
+    //         .await?;
 
-        if results.is_empty() {
-            return Err(TaskStoreError::UnknownTaskName(task_name.into()));
-        }
+    //     if results.is_empty() {
+    //         return Err(TaskStoreError::UnknownTaskName(task_name.into()));
+    //     }
 
-        let last_completed =
-            NaiveDate::from_ymd_opt(results[0].3, results[0].4, results[0].5).unwrap();
+    //     let last_completed =
+    //         NaiveDate::from_ymd_opt(results[0].3, results[0].4, results[0].5).unwrap();
 
-        let mut task = Task {
-            name: results[0].0.as_str().into(),
-            kind: results[0].1,
-            length_days: results[0].2,
-            last_completed,
-            deadline: next_deadline(results[0].2, last_completed),
-            participants: Default::default(),
-            assigned_to: Default::default(),
-        };
+    //     let mut task = Task {
+    //         name: results[0].0.as_str().into(),
+    //         kind: results[0].1,
+    //         length_days: results[0].2,
+    //         last_completed,
+    //         deadline: next_deadline(results[0].2, last_completed),
+    //         participants: Default::default(),
+    //         assigned_to: Default::default(),
+    //     };
 
-        let last_completed = results[0].7.clone();
-        let participants = results.into_iter().map(|each| each.6).collect::<Vec<_>>();
-        task.assigned_to = next_assignee(participants.as_slice(), &last_completed).into();
-        task.participants = participants;
+    //     let last_completed = results[0].7.clone();
+    //     let participants = results.into_iter().map(|each| each.6).collect::<Vec<_>>();
+    //     task.assigned_to = next_assignee(participants.as_slice(), &last_completed).into();
+    //     task.participants = participants;
 
-        Ok(task)
-    }
+    //     Ok(task)
+    // }
 
     // pub async fn mark_task_as_done_by(
     //     &self,
@@ -320,6 +384,8 @@ fn next_assignee<'a>(participants: &'a [String], last_completed_by: &str) -> &'a
         }
     }
 
+    dbg!(participants, last_completed_by);
+
     unreachable!("Invalid Data")
 }
 
@@ -334,6 +400,28 @@ pub struct NewTask {
     pub participants: Vec<String>,
     pub starts_on: NaiveDate,
     pub starts_with: String,
+}
+
+#[cfg(test)]
+mod tests2 {
+    use crate::auth::AuthStore;
+
+    use super::*;
+
+    #[sqlx::test]
+    async fn test_listing_tasks_for_empty_store_gives_no_results(conn: sqlx::SqlitePool) {
+        let task_store = TaskStore::new(conn);
+        assert_eq!(task_store.tasks().await.unwrap(), vec![]);
+    }
+
+    #[sqlx::test]
+    async fn test_listing_tasks_when_tasks_exist(conn: sqlx::SqlitePool) {
+        let task_store = TaskStore::new(conn.clone());
+        let auth_store = AuthStore::new(conn);
+        auth_store.create_user("test_1", "").await.unwrap();
+        auth_store.create_user("test_2", "").await.unwrap();
+        assert_eq!(task_store.tasks().await.unwrap(), vec![]);
+    }
 }
 
 #[cfg(test)]
