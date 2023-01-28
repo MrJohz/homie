@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use chrono::{Datelike, Duration, Local, NaiveDate};
+use chrono::{Duration, Local, NaiveDate};
 use sqlx::SqlitePool;
 use tokio::fs;
 
@@ -180,79 +180,67 @@ impl TaskStore {
             *p = p.to_lowercase()
         }
 
-        sqlx::query("INSERT INTO tasks (id, task_name, kind, duration) VALUES (?, ?, ?, ?)")
-            .bind(&task_id)
-            .bind(new_task.name)
-            .bind(match new_task.routine {
-                Routine::Schedule => "SCHEDULE",
-                Routine::Interval => "INTERVAL",
-            })
-            .bind(new_task.duration)
-            .execute(&mut transaction)
-            .await?;
+        sqlx::query(
+            "INSERT INTO tasks
+                (id, task_name, kind, duration, created, assignee)
+            VALUES
+                (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&task_id)
+        .bind(new_task.name)
+        .bind(new_task.routine)
+        .bind(new_task.duration)
+        .bind(new_task.starts_on)
+        .bind(new_task.starts_with)
+        .execute(&mut transaction)
+        .await?;
 
         for person in &new_task.participants {
-            sqlx::query("INSERT INTO task_user_link (task_id, user_id) VALUES (?, ?)")
-                .bind(&task_id)
-                .bind(person)
-                .execute(&mut transaction)
-                .await?;
-        }
-
-        let pseudo_completion_date = new_task.starts_on - Duration::days(new_task.duration.into());
-        let pseudo_completed_by = new_task
-            .participants
-            .iter()
-            .position(|p| p == &new_task.starts_with);
-        let pseudo_completed_by = match pseudo_completed_by {
-            None => return Err(TaskStoreError::PersonNotInTaskRota(new_task.starts_with)),
-            Some(0) => new_task.participants.len() - 1,
-            Some(n) => n - 1,
-        };
-        let pseudo_completed_by = &new_task.participants[pseudo_completed_by];
-
-        sqlx::query("INSERT INTO completions (task_id, completed_by, completed_year, completed_month, completed_day) VALUES (?, ?, ?, ?, ?)")
+            sqlx::query(
+                "INSERT INTO task_participant_link
+                    (task_id, user_id)
+                VALUES
+                    (?, ?)",
+            )
             .bind(&task_id)
-            .bind(pseudo_completed_by.to_lowercase())
-            .bind(pseudo_completion_date.year())
-            .bind(pseudo_completion_date.month())
-            .bind(pseudo_completion_date.day())
-            .execute(&mut transaction).await?;
+            .bind(person)
+            .execute(&mut transaction)
+            .await?;
+        }
 
         transaction.commit().await?;
 
         Ok(())
     }
 
-    pub async fn tasks(&self) -> Result<Vec<Task>, TaskStoreError> {
-        let rows = sqlx::query_as::<_, (String, String, Routine, u16, String, i32, u32, u32)>("SELECT (task_name, task.id, kind, duration, completed_by, username, completed_month, completed_day) FROM tasks INNER JOIN completions ON tasks.id = completions.task_id INNER JOIN users ON users.id = completions.completed_by").fetch_all(&self.conn).await?;
-        let mut results = Vec::with_capacity(rows.len());
-        for (name, id, kind, duration, completed_by, year, month, day) in rows {
-            let participants = sqlx::query_as::<_, (String,)>("SELECT username FROM tasks INNER JOIN task_user_link ON tasks.id = task_user_link.task_id INNER JOIN users ON user_id = users.id WHERE tasks.id = ?")
-            .bind(id).fetch_all(&self.conn).await?;
-            let participants = participants.into_iter().map(|p| p.0).collect::<Vec<_>>();
-            let last_completed = NaiveDate::from_ymd_opt(year, month, day).unwrap();
-            results.push(Task {
-                name: name.as_str().into(),
-                kind,
-                length_days: duration,
-                participants: participants.iter().map(|p| p.as_str().into()).collect(),
-                last_completed,
-                assigned_to: next_assignee(participants.as_slice(), &completed_by).into(),
-                deadline: next_deadline(duration, last_completed),
-            })
-        }
-        Ok(results)
-    }
+    // pub async fn tasks(&self) -> Result<Vec<Task>, TaskStoreError> {
+    //     let rows = sqlx::query!("SELECT (task_name, tasks.id, kind, duration, users.username, completed_on) FROM tasks INNER JOIN completions ON tasks.id = completions.task_id INNER JOIN users ON users.id = completions.completed_by").fetch_all(&self.conn).await?;
+    //     let mut results = Vec::with_capacity(rows.len());
+    //     for (name, id, kind, duration, completed_by, last_completed) in rows {
+    //         let participants = sqlx::query_as::<_, (String,)>("SELECT username FROM tasks INNER JOIN task_user_link ON tasks.id = task_user_link.task_id INNER JOIN users ON user_id = users.id WHERE tasks.id = ?")
+    //         .bind(id).fetch_all(&self.conn).await?;
+    //         let participants = participants.into_iter().map(|p| p.0).collect::<Vec<_>>();
+    //         results.push(Task {
+    //             name: name.as_str().into(),
+    //             kind,
+    //             length_days: duration,
+    //             participants: participants.iter().map(|p| p.as_str().into()).collect(),
+    //             last_completed,
+    //             assigned_to: next_assignee(participants.as_slice(), &completed_by).into(),
+    //             deadline: next_deadline(duration, last_completed),
+    //         })
+    //     }
+    //     Ok(results)
+    // }
 
-    pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
-        Ok(self
-            .tasks()
-            .await?
-            .into_iter()
-            .filter(|task| task.assigned_to == person)
-            .collect())
-    }
+    // pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
+    //     Ok(self
+    //         .tasks()
+    //         .await?
+    //         .into_iter()
+    //         .filter(|task| task.assigned_to == person)
+    //         .collect())
+    // }
 
     pub async fn task(&self, task_name: &str) -> Result<Task, TaskStoreError> {
         let results = sqlx::query_as::<_, (String,Routine,u16,i32,u32,u32,String,String)>("

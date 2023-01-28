@@ -1,19 +1,22 @@
-CREATE TABLE tasks (
+CREATE TABLE
+  tasks (
     id text primary key,
-    task_name text,
-    kind text,
-    duration integer
-);
+    task_name text NOT NULL,
+    kind text NOT NULL,
+    duration integer NOT NULL,
+    assignee text NOT NULL,
+    created text NOT NULL
+  );
 
-CREATE TABLE task_user_link (
-  task_id text REFERENCES tasks (id),
-  user_id text REFERENCES users (id)
-);
+CREATE TABLE
+  task_participant_link (
+    task_id text NOT NULL REFERENCES tasks (id),
+    user_id text NOT NULL REFERENCES users (id)
+  );
 
-CREATE TABLE completions (
-  task_id text REFERENCES tasks (id),
-  completed_by text REFERENCES users (id),
-  completed_year integer,
-  completed_month integer,
-  completed_day integer
-);
+CREATE TABLE
+  completions (
+    task_id text NOT NULL REFERENCES tasks (id),
+    completed_by text NOT NULL REFERENCES users (id),
+    completed_on text NOT NULL
+  );
