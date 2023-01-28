@@ -1,9 +1,6 @@
 use chrono::{Duration, NaiveDate};
 
-type String = heapless::String<40>;
-type Vec<T> = heapless::Vec<T, 10>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, sqlx::Type)]
 pub enum Routine {
     Schedule,
     Interval,

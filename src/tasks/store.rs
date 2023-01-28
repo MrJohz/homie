@@ -4,7 +4,7 @@ use chrono::{Datelike, Duration, Local, NaiveDate};
 use sqlx::SqlitePool;
 use tokio::fs;
 
-use super::types::{Routine, Task};
+use super::types::{Deadline, Routine, Task};
 
 #[derive(thiserror::Error, Debug)]
 pub enum TaskStoreError {
@@ -223,6 +223,120 @@ impl TaskStore {
 
         Ok(())
     }
+
+    pub async fn tasks(&self) -> Result<Vec<Task>, TaskStoreError> {
+        let rows = sqlx::query_as::<_, (String, String, Routine, u16, String, i32, u32, u32)>("SELECT (task_name, task.id, kind, duration, completed_by, username, completed_month, completed_day) FROM tasks INNER JOIN completions ON tasks.id = completions.task_id INNER JOIN users ON users.id = completions.completed_by").fetch_all(&self.conn).await?;
+        let mut results = Vec::with_capacity(rows.len());
+        for (name, id, kind, duration, completed_by, year, month, day) in rows {
+            let participants = sqlx::query_as::<_, (String,)>("SELECT username FROM tasks INNER JOIN task_user_link ON tasks.id = task_user_link.task_id INNER JOIN users ON user_id = users.id WHERE tasks.id = ?")
+            .bind(id).fetch_all(&self.conn).await?;
+            let participants = participants.into_iter().map(|p| p.0).collect::<Vec<_>>();
+            let last_completed = NaiveDate::from_ymd_opt(year, month, day).unwrap();
+            results.push(Task {
+                name: name.as_str().into(),
+                kind,
+                length_days: duration,
+                participants: participants.iter().map(|p| p.as_str().into()).collect(),
+                last_completed,
+                assigned_to: next_assignee(participants.as_slice(), &completed_by).into(),
+                deadline: next_deadline(duration, last_completed),
+            })
+        }
+        Ok(results)
+    }
+
+    pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
+        Ok(self
+            .tasks()
+            .await?
+            .into_iter()
+            .filter(|task| task.assigned_to == person)
+            .collect())
+    }
+
+    pub async fn task(&self, task_name: &str) -> Result<Task, TaskStoreError> {
+        let results = sqlx::query_as::<_, (String,Routine,u16,i32,u32,u32,String,String)>("
+        SELECT
+            task_name, kind, duration, completed_year, completed_month, completed_day, task_user.username, complete_user.username
+        FROM
+            tasks
+            INNER JOIN completions ON tasks.id = completions.task_id
+            INNER JOIN task_user_link ON tasks.id = task_user_link.task_id
+            INNER JOIN users task_user on task_user_link.user_id = task_user.id
+            INNER JOIN users complete_user on completions.completed_by = complete_user.id
+        WHERE
+            tasks.id = ?")
+            .bind(task_name.to_lowercase())
+            .fetch_all(&self.conn)
+            .await?;
+
+        if results.is_empty() {
+            return Err(TaskStoreError::UnknownTaskName(task_name.into()));
+        }
+
+        let last_completed =
+            NaiveDate::from_ymd_opt(results[0].3, results[0].4, results[0].5).unwrap();
+
+        let mut task = Task {
+            name: results[0].0.as_str().into(),
+            kind: results[0].1,
+            length_days: results[0].2,
+            last_completed,
+            deadline: next_deadline(results[0].2, last_completed),
+            participants: Default::default(),
+            assigned_to: Default::default(),
+        };
+
+        let last_completed = results[0].7.clone();
+        let participants = results.into_iter().map(|each| each.6).collect::<Vec<_>>();
+        task.assigned_to = next_assignee(participants.as_slice(), &last_completed).into();
+        task.participants = participants;
+
+        Ok(task)
+    }
+
+    // pub async fn mark_task_as_done_by(
+    //     &self,
+    //     task_name: &str,
+    //     person: &str,
+    // ) -> Result<Task, TaskStoreError> {
+    //     let task_id = task_name.to_lowercase();
+    //     let person_id = person.to_lowercase();
+    //     let task = self.task(&task_id).await?;
+    //     sqlx::query("INSERT INTO completions (task_id, completed_by, completed_year, completed_month, completed_day VALUES (?, ?, ?, ?, ?)")
+    //         .bind(&task_id)
+    //         .bind(&person_id)
+    //     let task = sqlx::query_as::<_, (i32,)>("SELECT
+    //     task_name, kind, duration, completed_year, completed_month, completed_day, task_user.username, complete_user.username
+    //   FROM
+    //     tasks
+    //     INNER JOIN completions ON tasks.id = completions.task_id
+    //     INNER JOIN task_user_link ON tasks.id = task_user_link.task_id
+    //     INNER JOIN users task_user on task_user_link.user_id = task_user.id
+    //     INNER JOIN users complete_user on completions.completed_by = complete_user.id
+    //   WHERE
+    //     tasks.id = ?")
+    //     .bind(task_name.to_lowercase())
+    //         .fetch_one(&self.conn)
+    //         .await?;
+
+    //     Err(TaskStoreError::UnknownTaskName("Keving".into()))
+    // }
+}
+
+fn next_assignee<'a>(participants: &'a [String], last_completed_by: &str) -> &'a str {
+    let mut participants_iter = participants.iter();
+    while let Some(person) = participants_iter.next() {
+        if person == last_completed_by {
+            return participants_iter.next().unwrap_or(&participants[0]);
+        }
+    }
+
+    unreachable!("Invalid Data")
+}
+
+fn next_deadline(task_length: u16, last_completed: NaiveDate) -> Deadline {
+    (last_completed + Duration::days(task_length.into()) - Local::now().date_naive()).into()
 }
 
 pub struct NewTask {
@@ -255,8 +369,8 @@ mod tests {
         file
     }
 
-    fn heapless_vec(v: Vec<impl Into<String>>) -> heapless::Vec<heapless::String<40>, 10> {
-        v.into_iter().map(|i| i.into().as_str().into()).collect()
+    fn vec(v: Vec<impl Into<String>>) -> Vec<String> {
+        v.into_iter().map(|i| i.into()).collect()
     }
 
     #[tokio::test]
@@ -290,7 +404,7 @@ mod tests {
                 deadline: Deadline::Upcoming(12),
                 length_days: 14,
                 last_completed: (Local::now() - Duration::days(2)).date_naive(),
-                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
+                participants: vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -346,7 +460,7 @@ mod tests {
                 deadline: Deadline::Upcoming(5),
                 length_days: 7,
                 last_completed: (Local::now() - Duration::days(2)).date_naive(),
-                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
+                participants: vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
         assert_eq!(
@@ -358,7 +472,7 @@ mod tests {
                 deadline: Deadline::Upcoming(5),
                 length_days: 7,
                 last_completed: (Local::now() - Duration::days(2)).date_naive(),
-                participants: heapless_vec(vec!["Bob", "Kevin", "Samantha"]),
+                participants: vec(vec!["Bob", "Kevin", "Samantha"]),
             }]
         );
         assert_eq!(
@@ -370,7 +484,7 @@ mod tests {
                 deadline: Deadline::Upcoming(5),
                 length_days: 7,
                 last_completed: (Local::now() - Duration::days(2)).date_naive(),
-                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
+                participants: vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -398,7 +512,7 @@ mod tests {
                 deadline: Deadline::Upcoming(14),
                 length_days: 14,
                 last_completed: (Local::now()).date_naive(),
-                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
+                participants: vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -429,7 +543,7 @@ mod tests {
                 deadline: Deadline::Upcoming(14),
                 length_days: 14,
                 last_completed: (Local::now()).date_naive(),
-                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
+                participants: vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -457,7 +571,7 @@ mod tests {
                 deadline: Deadline::Upcoming(18), // = 4 (days remaining of original task) + 14 (length of task)
                 length_days: 14,
                 last_completed: (Local::now() + Duration::days(4)).date_naive(),
-                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
+                participants: vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
@@ -485,7 +599,7 @@ mod tests {
                 deadline: Deadline::Upcoming(10), // = 14 (length of task) - 4 (days remaining of original task)
                 length_days: 14,
                 last_completed: (Local::now() - Duration::days(4)).date_naive(),
-                participants: heapless_vec(vec!["Kevin", "Bob", "Samantha"]),
+                participants: vec(vec!["Kevin", "Bob", "Samantha"]),
             }]
         );
     }
