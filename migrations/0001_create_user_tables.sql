@@ -1,9 +1,9 @@
 CREATE TABLE users (
-    id string primary key,
-    username string,
-    hash string
+    id text primary key,
+    username text,
+    hash text
 );
 CREATE TABLE tokens (
-    token string,
-    id string REFERENCES users (id)
+    token text UNIQUE,
+    id text REFERENCES users (id)
 );
