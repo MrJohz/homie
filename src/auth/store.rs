@@ -3,7 +3,7 @@ use rand_core::OsRng;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use super::types::{AuthError, Token};
+use super::types::{AuthError, Token, UserId};
 
 #[derive(Clone)]
 pub struct AuthStore {
@@ -31,20 +31,22 @@ impl AuthStore {
     }
 
     pub async fn login(&self, username: &str, password: &str) -> Result<Token, AuthError> {
-        let id = username.to_lowercase();
-        let stored_hash = sqlx::query_as::<_, (String,)>("SELECT hash FROM users WHERE id = ?")
-            .bind(&id)
-            .fetch_optional(&self.conn)
-            .await?;
+        let stored_hash = sqlx::query_as::<_, (UserId, String)>(
+            "SELECT hash FROM users WHERE name = ? COLLATE NOCASE",
+        )
+        .bind(username)
+        .fetch_optional(&self.conn)
+        .await?;
 
-        match stored_hash {
-            Some((hash,)) => self
+        let id = match stored_hash {
+            Some((id, hash)) => self
                 .hasher
                 .verify_password(
                     password.as_bytes(),
                     &argon2::PasswordHash::new(&hash)
                         .map_err(|_| AuthError::UserPasswordMismatch)?,
                 )
+                .map(|_| id)
                 .map_err(|_| AuthError::UserPasswordMismatch)?,
             None => Err(AuthError::UserPasswordMismatch)?,
         };
@@ -79,8 +81,7 @@ impl AuthStore {
             .unwrap()
             .to_string();
 
-        sqlx::query("INSERT INTO users (id, username, hash) VALUES (?, ?, ?)")
-            .bind(username.to_lowercase())
+        sqlx::query("INSERT INTO users (username, hash) VALUES (?, ?)")
             .bind(username)
             .bind(&hash)
             .execute(&self.conn)
@@ -91,8 +92,7 @@ impl AuthStore {
 
     #[cfg(test)]
     pub async fn create_test_user(&self, username: &str) -> Result<(), AuthError> {
-        sqlx::query("INSERT INTO users (id, username, hash) VALUES (?, ?, ?)")
-            .bind(username.to_lowercase())
+        sqlx::query("INSERT INTO users (username, hash) VALUES (?, ?)")
             .bind(username)
             .bind("test_user")
             .execute(&self.conn)

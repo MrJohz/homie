@@ -68,19 +68,17 @@ async fn main() {
         .init();
 
     let conn = db::create_connection().await;
-    let auth = auth::AuthStore::new(conn);
+    let auth = auth::AuthStore::new(conn.clone());
 
     let app = Router::new();
     let app = apply_routes(app, &ASSETS);
     let app = app
         .nest(
             "/api/tasks",
-            tasks::routes()
-                .await
-                .route_layer(middleware::from_fn_with_state(
-                    auth.clone(),
-                    auth::login_middleware,
-                )),
+            tasks::routes(conn).route_layer(middleware::from_fn_with_state(
+                auth.clone(),
+                auth::login_middleware,
+            )),
         )
         .nest("/api/auth", auth::routes(auth.clone()))
         .layer(tower_http::trace::TraceLayer::new_for_http());

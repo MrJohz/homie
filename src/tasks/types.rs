@@ -1,9 +1,29 @@
 use chrono::{Duration, NaiveDate};
+use sqlx::Sqlite;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, sqlx::Type)]
 pub enum Routine {
     Schedule,
     Interval,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    serde::Deserialize,
+    serde::Serialize,
+    sqlx::Encode,
+    sqlx::Decode,
+)]
+pub struct TaskId(i32);
+
+impl sqlx::Type<Sqlite> for TaskId {
+    fn type_info() -> <Sqlite as sqlx::Database>::TypeInfo {
+        <i32 as sqlx::Type<sqlx::Sqlite>>::type_info()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -25,6 +45,7 @@ impl From<Duration> for Deadline {
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Task {
+    pub id: TaskId,
     pub name: String,
     pub kind: Routine,
     pub assigned_to: String,

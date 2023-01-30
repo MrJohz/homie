@@ -1,6 +1,6 @@
 CREATE TABLE
   tasks (
-    id integer primary key,
+    id integer primary key autoincrement,
     task_name text NOT NULL,
     kind text NOT NULL,
     duration integer NOT NULL

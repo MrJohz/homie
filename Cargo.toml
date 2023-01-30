@@ -18,6 +18,7 @@ sqlx = { version = "0.6.2", features = [
   "sqlite",
   "uuid",
   "chrono",
+  "json",
 ] }
 libsqlite3-sys = { version = "*", features = ["bundled"] }
 thiserror = "1.0.38"

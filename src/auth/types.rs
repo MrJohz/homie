@@ -25,6 +25,15 @@ impl FromStr for Token {
     }
 }
 
+#[derive(Debug, serde::Deserialize, serde::Serialize, sqlx::Encode, sqlx::Decode)]
+pub struct UserId(i32);
+
+impl sqlx::Type<sqlx::Sqlite> for UserId {
+    fn type_info() -> <sqlx::Sqlite as sqlx::Database>::TypeInfo {
+        <i32 as sqlx::Type<sqlx::Sqlite>>::type_info()
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum AuthError {
     // 500 type errors (it's probably our fault)
