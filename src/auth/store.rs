@@ -32,7 +32,7 @@ impl AuthStore {
 
     pub async fn login(&self, username: &str, password: &str) -> Result<Token, AuthError> {
         let stored_hash = sqlx::query_as::<_, (UserId, String)>(
-            "SELECT hash FROM users WHERE name = ? COLLATE NOCASE",
+            "SELECT id, hash FROM users WHERE username = ? COLLATE NOCASE",
         )
         .bind(username)
         .fetch_optional(&self.conn)
