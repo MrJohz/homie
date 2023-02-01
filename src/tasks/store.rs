@@ -308,7 +308,7 @@ mod tests2 {
                 starts_with: "bob".into(),
                 routine: Routine::Interval,
                 duration: 7,
-                starts_on: NaiveDate::from_ymd_opt(2020, 1, 15).unwrap(),
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
                 participants: vec!["arthur".into(), "bob".into()],
             })
             .await
@@ -325,8 +325,19 @@ mod tests2 {
             .await
             .unwrap();
 
+        let task = task_store.task("Test Task 1").await.unwrap();
+        assert_eq!(task.name, "Test Task 1".to_owned());
+        assert_eq!(
+            task.last_completed,
+            NaiveDate::from_ymd_opt(2020, 1, 3).unwrap()
+        );
+
         let task = task_store.task("Test Task 2").await.unwrap();
         assert_eq!(task.name, "Test Task 2".to_owned());
+        assert_eq!(
+            task.last_completed,
+            NaiveDate::from_ymd_opt(2020, 1, 8).unwrap()
+        );
     }
 
     #[sqlx::test]
@@ -415,5 +426,79 @@ mod tests2 {
         let task = task_store.mark_task_done("Task", "bob").await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned()); // assignee updated
         assert_eq!(task.deadline, Deadline::Upcoming(1)); // next period starts on 8th and continues for 7 days
+    }
+
+    #[sqlx::test]
+    async fn test_completing_schedule_task_multiple_times(conn: sqlx::SqlitePool) {
+        time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
+        let task_store = TaskStore::new(conn.clone());
+        let auth_store = AuthStore::new(conn);
+        auth_store.create_test_user("arthur").await.unwrap();
+        auth_store.create_test_user("bob").await.unwrap();
+        task_store
+            .add_task(NewTask {
+                name: "Task".into(),
+                starts_with: "arthur".into(),
+                routine: Routine::Schedule,
+                duration: 7,
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
+                participants: vec!["arthur".into(), "bob".into()],
+            })
+            .await
+            .unwrap();
+
+        let task = task_store.task("Task").await.unwrap();
+        assert_eq!(task.assigned_to, "arthur".to_owned());
+        assert_eq!(task.deadline, Deadline::Overdue(4));
+
+        let task = task_store.mark_task_done("Task", "arthur").await.unwrap();
+        assert_eq!(task.assigned_to, "bob".to_owned());
+        assert_eq!(task.deadline, Deadline::Upcoming(3));
+
+        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        assert_eq!(task.assigned_to, "arthur".to_owned());
+        assert_eq!(task.deadline, Deadline::Upcoming(10));
+
+        // the same person does the task multiple times in a row
+        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        assert_eq!(task.assigned_to, "arthur".to_owned());
+        assert_eq!(task.deadline, Deadline::Upcoming(17));
+    }
+
+    #[sqlx::test]
+    async fn test_completing_interval_task_multiple_times(conn: sqlx::SqlitePool) {
+        time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
+        let task_store = TaskStore::new(conn.clone());
+        let auth_store = AuthStore::new(conn);
+        auth_store.create_test_user("arthur").await.unwrap();
+        auth_store.create_test_user("bob").await.unwrap();
+        task_store
+            .add_task(NewTask {
+                name: "Task".into(),
+                starts_with: "arthur".into(),
+                routine: Routine::Interval,
+                duration: 7,
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
+                participants: vec!["arthur".into(), "bob".into()],
+            })
+            .await
+            .unwrap();
+
+        let task = task_store.task("Task").await.unwrap();
+        assert_eq!(task.assigned_to, "arthur".to_owned());
+        assert_eq!(task.deadline, Deadline::Overdue(4));
+
+        let task = task_store.mark_task_done("Task", "arthur").await.unwrap();
+        assert_eq!(task.assigned_to, "bob".to_owned());
+        assert_eq!(task.deadline, Deadline::Upcoming(7));
+
+        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        assert_eq!(task.assigned_to, "arthur".to_owned());
+        assert_eq!(task.deadline, Deadline::Upcoming(7));
+
+        // the same person does the task multiple times in a row
+        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        assert_eq!(task.assigned_to, "arthur".to_owned());
+        assert_eq!(task.deadline, Deadline::Upcoming(7));
     }
 }
