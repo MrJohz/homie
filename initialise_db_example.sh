@@ -5,7 +5,7 @@
 # edit this and copy it to e.g. `initialise_db.sh`
 #
 # Running instructions:
-#   ./initialise_db /path/to/db
+#   ./initialise_db /path/to/target/db
 ##
 
 set -o errexit   # abort on nonzero exitstatus
