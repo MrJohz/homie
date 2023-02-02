@@ -3,7 +3,8 @@ CREATE TABLE
     id integer primary key autoincrement,
     task_name text NOT NULL,
     kind text NOT NULL,
-    duration integer NOT NULL
+    duration integer NOT NULL,
+    UNIQUE (task_name)
   );
 
 CREATE TABLE
@@ -20,6 +21,10 @@ CREATE TABLE
     completed_on text NOT NULL,
     initial integer NOT NULL DEFAULT FALSE
   );
+
+CREATE INDEX task_participant_link_task_id ON task_participant_link (task_id);
+
+CREATE INDEX completions_completed_on_task_id ON completions (completed_on, task_id);
 
 CREATE VIEW
   grouped_tasks AS
@@ -90,7 +95,3 @@ FROM
   ) c4 ON c4.task_id = tasks.id
 GROUP BY
   tasks.id;
-
-CREATE INDEX task_participant_link_task_id ON task_participant_link (task_id);
-
-CREATE INDEX completions_completed_on_task_id ON completions (completed_on, task_id);

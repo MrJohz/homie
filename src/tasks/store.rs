@@ -183,19 +183,19 @@ pub struct NewTask {
 }
 
 #[cfg(test)]
-mod tests2 {
+mod tests {
     use crate::{auth::AuthStore, tasks::time};
 
     use super::*;
 
     #[sqlx::test]
-    async fn test_listing_tasks_for_empty_store_gives_no_results(conn: sqlx::SqlitePool) {
+    async fn listing_tasks_for_empty_store_gives_no_results(conn: sqlx::SqlitePool) {
         let task_store = TaskStore::new(conn);
         assert_eq!(task_store.tasks().await.unwrap(), vec![]);
     }
 
     #[sqlx::test]
-    async fn test_listing_tasks_when_tasks_exist(conn: sqlx::SqlitePool) {
+    async fn listing_tasks_when_tasks_exist(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 10).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
@@ -232,7 +232,7 @@ mod tests2 {
     }
 
     #[sqlx::test]
-    async fn test_returns_tasks_for_a_particular_person(conn: sqlx::SqlitePool) {
+    async fn returns_tasks_for_a_particular_person(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 10).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
@@ -296,7 +296,7 @@ mod tests2 {
     }
 
     #[sqlx::test]
-    async fn test_returns_created_task(conn: sqlx::SqlitePool) {
+    async fn returns_created_task(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 10).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
@@ -341,7 +341,7 @@ mod tests2 {
     }
 
     #[sqlx::test]
-    async fn test_completing_interval_task_returns_updated_task(conn: sqlx::SqlitePool) {
+    async fn completing_interval_task_returns_updated_task(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 10).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
@@ -370,7 +370,7 @@ mod tests2 {
     }
 
     #[sqlx::test]
-    async fn test_completing_schedule_task_returns_updated_task(conn: sqlx::SqlitePool) {
+    async fn completing_schedule_task_returns_updated_task(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 10).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
@@ -399,7 +399,7 @@ mod tests2 {
     }
 
     #[sqlx::test]
-    async fn test_completing_period_schedule_tasks_rolls_the_date_forward(conn: sqlx::SqlitePool) {
+    async fn completing_period_schedule_tasks_rolls_the_date_forward(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
@@ -429,7 +429,7 @@ mod tests2 {
     }
 
     #[sqlx::test]
-    async fn test_completing_schedule_task_multiple_times(conn: sqlx::SqlitePool) {
+    async fn completing_schedule_task_multiple_times(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
@@ -466,7 +466,7 @@ mod tests2 {
     }
 
     #[sqlx::test]
-    async fn test_completing_interval_task_multiple_times(conn: sqlx::SqlitePool) {
+    async fn completing_interval_task_multiple_times(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
         let task_store = TaskStore::new(conn.clone());
         let auth_store = AuthStore::new(conn);
@@ -500,5 +500,77 @@ mod tests2 {
         let task = task_store.mark_task_done("Task", "bob").await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(7));
+    }
+
+    #[sqlx::test]
+    async fn handles_tasks_with_only_one_participant(conn: sqlx::SqlitePool) {
+        time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
+        let task_store = TaskStore::new(conn.clone());
+        let auth_store = AuthStore::new(conn);
+        auth_store.create_test_user("arthur").await.unwrap();
+        task_store
+            .add_task(NewTask {
+                name: "Interval Task".into(),
+                starts_with: "arthur".into(),
+                routine: Routine::Interval,
+                duration: 7,
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
+                participants: vec!["arthur".into()],
+            })
+            .await
+            .unwrap();
+        task_store
+            .add_task(NewTask {
+                name: "Schedule Task".into(),
+                starts_with: "arthur".into(),
+                routine: Routine::Schedule,
+                duration: 7,
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
+                participants: vec!["arthur".into()],
+            })
+            .await
+            .unwrap();
+
+        let task = task_store.task("Interval Task").await.unwrap();
+        assert_eq!(task.assigned_to, "arthur".to_owned());
+        assert_eq!(task.deadline, Deadline::Overdue(4));
+
+        let task = task_store
+            .mark_task_done("Schedule Task", "arthur")
+            .await
+            .unwrap();
+        assert_eq!(task.assigned_to, "arthur".to_owned());
+        assert_eq!(task.deadline, Deadline::Upcoming(3));
+    }
+
+    #[sqlx::test]
+    async fn prevents_two_tasks_from_having_the_same_name(conn: sqlx::SqlitePool) {
+        time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
+        let task_store = TaskStore::new(conn.clone());
+        let auth_store = AuthStore::new(conn);
+        auth_store.create_test_user("arthur").await.unwrap();
+        task_store
+            .add_task(NewTask {
+                name: "Task".into(),
+                starts_with: "arthur".into(),
+                routine: Routine::Interval,
+                duration: 7,
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
+                participants: vec!["arthur".into()],
+            })
+            .await
+            .unwrap();
+        let result = task_store
+            .add_task(NewTask {
+                name: "Task".into(),
+                starts_with: "arthur".into(),
+                routine: Routine::Schedule,
+                duration: 7,
+                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
+                participants: vec!["arthur".into()],
+            })
+            .await;
+
+        assert!(result.is_err())
     }
 }
