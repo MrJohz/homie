@@ -1,7 +1,8 @@
 .PHONY: all build-homie build-frontend copy-to-server
 
 PROFILE ?= "dev"
-TARGET_ARG := $(if $(TARGET),--target=$(TARGET),)
+
+CARGO_COMMAND := $(if $(TARGET),cross build --target=$(TARGET),cargo build)
 TARGET_DIRECTORY := $(if $(TARGET),target/$(TARGET),target)
 ifeq ($(PROFILE),dev)
   PROFILE_DIRECTORY=debug
@@ -13,7 +14,7 @@ SERVER_DIRECTORY ?= "~/opt/homie"
 all: build-homie
 
 build-homie: build-frontend
-	cross build --profile ${PROFILE} ${TARGET_ARG}
+	${CARGO_COMMAND} --profile ${PROFILE}
 
 build-frontend:
 	cd frontend && pnpm install
