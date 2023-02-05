@@ -44,17 +44,14 @@
 }
 
 @media screen and (min-width: 1000px) {
+  .padding-span {
+    padding: 0.375rem 0.75;
+  }
   .padding-default {
     padding: 1.5rem;
   }
   .padding-small {
     padding: 0.75rem;
-  }
-  .-padding-default {
-    padding: -1.5rem;
-  }
-  .-padding-small {
-    padding: -0.75rem;
   }
 }
 

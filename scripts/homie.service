@@ -1,0 +1,12 @@
+[Unit]
+Description=Homie
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/homie
+Restart=on-failure
+WorkingDirectory=/opt/homie
+Environment=RUST_LOG=WARN,tower_http=DEBUG,homie=TRACE
+
+[Install]
+WantedBy=multi-user.target

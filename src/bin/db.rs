@@ -1,3 +1,9 @@
+use std::env::current_exe;
+use std::fs;
+use std::io::Write;
+use std::os::unix;
+use std::process::Command;
+
 use clap::Parser;
 
 #[derive(clap::Parser)]
@@ -34,8 +40,7 @@ enum Commands {
         #[arg(long)]
         starts_on: chrono::NaiveDate,
     },
-    /// Provides some useful info for me
-    Debug,
+    Install,
 }
 
 #[tokio::main]
@@ -77,10 +82,29 @@ async fn main() {
                 .await
                 .unwrap();
         }
-        Commands::Debug => {
-            let conn = homie::db::create_connection().await;
-            let store = homie::tasks::TaskStore::new(conn);
-            dbg!(store.tasks().await.unwrap());
+        Commands::Install => {
+            let symlink_source = format!(
+                "{}/homie",
+                current_exe().unwrap().parent().unwrap().display()
+            );
+
+            fs::create_dir_all("/opt/homie/data").unwrap();
+            let conn = homie::db::create_connection_in_location("/opt/homie/data").await;
+            homie::db::migrate(conn).await.unwrap();
+
+            let _ = fs::remove_file("/usr/local/bin/homie");
+            unix::fs::symlink(symlink_source, "/usr/local/bin/homie").unwrap();
+
+            let mut file = fs::File::create("/etc/systemd/system/homie.service").unwrap();
+            write!(file, include_str!("../../scripts/homie.service")).unwrap();
+            let success = Command::new("systemctl")
+                .arg("daemon-reload")
+                .status()
+                .unwrap()
+                .success();
+            if !success {
+                eprintln!("systemctl daemon-reload errored");
+            }
         }
     }
 }
