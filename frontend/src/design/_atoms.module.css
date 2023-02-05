@@ -1,15 +1,26 @@
 :root,
 ::backdrop {
-  --color-blue: #1d6363;
-  --color-yellow: #e9d758;
-  --color-orange: #ff8552;
+  /* https://coolors.co/e2cb1d-ede5e1-e1eded-edece1-ededed-e35a20-297373-39393a */
+  --color-blue: #297373;
+  --color-pale-blue: #e1eded;
+  --color-yellow: #e2cb1d;
+  --color-pale-yellow: #edece1;
+  --color-orange: #e35a20;
+  --color-pale-orange: #ede5e1;
   --color-red: #841515;
-  --color-off-white: #e6e6e6;
   --color-off-black: #39393a;
+  --color-off-white: #ededed;
   --color-white: white;
   --color-black: black;
 
   font-size: 18px;
+}
+
+@media screen and (min-width: 1000px) {
+  :root,
+  ::backdrop {
+    font-size: 22px;
+  }
 }
 
 .text-small {
@@ -32,6 +43,21 @@
   padding: 0.5rem;
 }
 
+@media screen and (min-width: 1000px) {
+  .padding-default {
+    padding: 1.5rem;
+  }
+  .padding-small {
+    padding: 0.75rem;
+  }
+  .-padding-default {
+    padding: -1.5rem;
+  }
+  .-padding-small {
+    padding: -0.75rem;
+  }
+}
+
 .margin-default {
   margin: 1rem;
 }
@@ -45,11 +71,35 @@
   margin: -0.5rem;
 }
 
+@media screen and (min-width: 1000px) {
+  .margin-default {
+    margin: 1.5rem;
+  }
+  .margin-small {
+    margin: 0.75rem;
+  }
+  .-margin-default {
+    margin: -1.5rem;
+  }
+  .-margin-small {
+    margin: -0.75rem;
+  }
+}
+
 .gap-default {
   gap: 1rem;
 }
 .gap-small {
   gap: 0.5rem;
+}
+
+@media screen and (min-width: 1000px) {
+  .gap-default {
+    gap: 1.5rem;
+  }
+  .gap-small {
+    gap: 0.75rem;
+  }
 }
 
 :root {
@@ -85,6 +135,7 @@
 .font-heading {
   font-family: "BioRhyme Expanded", serif;
   text-transform: uppercase;
+  font-weight: 900;
 }
 .font-body {
   font-family: "Quicksand", sans-serif;
@@ -93,4 +144,21 @@
 
 .big-width-1 {
   min-width: 15rem;
+}
+
+.page-width-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.page-width-col > * {
+  max-width: 20rem;
+  width: 100%;
+}
+
+@media screen and (min-width: 1000px) {
+  .page-width-col > * {
+    max-width: 30rem;
+  }
 }

@@ -1,6 +1,7 @@
 .taskbox {
   composes: border-default from "../design/_atoms.module.css";
   --border-color: var(--color-yellow);
+  background-color: var(--color-pale-yellow);
   text-transform: lowercase;
   position: relative;
   opacity: 1;

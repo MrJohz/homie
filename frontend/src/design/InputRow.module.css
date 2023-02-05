@@ -9,7 +9,7 @@
   --border-color: var(--color-blue);
   --outline-color: var(--color-blue);
   text-transform: revert;
-  background-color: var(--color-off-white);
+  background-color: var(--color-pale-blue);
   width: 100%;
 }
 
@@ -17,7 +17,7 @@
   composes: border-default shadow-small padding-span text-small from "./_atoms.module.css";
   --border-color: var(--color-blue);
   align-self: flex-start;
-  background-color: var(--color-off-white);
+  background-color: var(--color-pale-blue);
   color: var(--color-blue);
   margin-bottom: -2px;
 }

@@ -8,17 +8,17 @@
 - [ ] Animation for input errors
 - [x] Animation for done tasks
 - [x] Handle connection/auth/etc errors more clearly
-- [ ] Desktop version
+- [x] Desktop version
 - [x] Filters/sorting (and searching?)
   - [ ] But actually implement it
 - [x] Logout functionality
 - [ ] Add UI translations
 - [ ] Add API translations
 - [ ] Some level of token expiry and deletion
-- [ ] Move tasks into SQLite
-- [ ] Load users from a file somewhere
+- [x] Move tasks into SQLite
+- [x] Load users from a file somewhere
 - [ ] History (and undo)
-- [ ] Auto build/deploy (via Docker?)
+- [ ] Task completed on (x) date
 - [x] Better cache-control headers
 
 ## How to build

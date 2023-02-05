@@ -2,7 +2,7 @@
   composes: shadow-default from "./_atoms.module.css";
   padding: 0;
   border: 0;
-  background-color: var(--color-off-white);
+  background-color: var(--color-pale-orange);
   color: var(--color-off-black);
 }
 
@@ -21,6 +21,7 @@
 .modalHeader {
   composes: -margin-small padding-small text-h2 font-heading from "./_atoms.module.css";
   background-color: var(--color-orange);
+  color: var(--color-off-black);
   margin-bottom: -0.5rem;
 }
 
