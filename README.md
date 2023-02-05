@@ -25,6 +25,8 @@
 
 ### Building for a Raspberry Pi
 
+**Update: Just using `cross` seems to work now.**
+
 This is going to depend a lot on the laptop, environment, latest versions, etc. What works right now may need adjusting in the future.
 
 - Problems I ran into
