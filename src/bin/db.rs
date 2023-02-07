@@ -49,7 +49,7 @@ async fn main() {
     match cli.command {
         Commands::Migrate => {
             let conn = homie::db::create_connection().await;
-            homie::db::migrate(conn).await.unwrap();
+            homie::db::migrate(&conn).await.unwrap();
         }
         Commands::AddUser { name, password } => {
             let conn = homie::db::create_connection().await;
@@ -90,7 +90,7 @@ async fn main() {
 
             fs::create_dir_all("/opt/homie/data").unwrap();
             let conn = homie::db::create_connection_in_location("/opt/homie/data").await;
-            homie::db::migrate(conn).await.unwrap();
+            homie::db::migrate(&conn).await.unwrap();
 
             let _ = fs::remove_file("/usr/local/bin/homie");
             unix::fs::symlink(symlink_source, "/usr/local/bin/homie").unwrap();

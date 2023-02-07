@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use sqlx::migrate::Migrator;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::SqlitePool;
@@ -15,17 +17,16 @@ pub async fn create_connection() -> SqlitePool {
     .unwrap()
 }
 
-pub async fn create_connection_in_location(location: &str) -> SqlitePool {
+pub async fn create_connection_in_location(location: impl AsRef<Path>) -> SqlitePool {
     sqlx::SqlitePool::connect_with(
-        format!("sqlite://{location}/homie.db")
-            .parse::<SqliteConnectOptions>()
-            .unwrap()
+        SqliteConnectOptions::new()
+            .filename(location.as_ref().join("homie.db"))
             .create_if_missing(true),
     )
     .await
     .unwrap()
 }
 
-pub async fn migrate(conn: SqlitePool) -> Result<(), sqlx::migrate::MigrateError> {
-    MIGRATOR.run(&conn).await
+pub async fn migrate(conn: &SqlitePool) -> Result<(), sqlx::migrate::MigrateError> {
+    MIGRATOR.run(conn).await
 }

@@ -5,9 +5,10 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use chrono::NaiveDate;
 use sqlx::SqlitePool;
 
-use super::{store::TaskStoreError, types::Task, TaskStore};
+use super::{store::TaskStoreError, time::today, types::Task, TaskStore};
 
 impl IntoResponse for TaskStoreError {
     fn into_response(self) -> axum::response::Response {
@@ -36,6 +37,7 @@ async fn tasks_for_person(
 #[derive(Debug, serde::Deserialize)]
 struct MarkTaskDoneQuery {
     by: String,
+    on: Option<NaiveDate>,
 }
 
 async fn mark_task_done(
@@ -43,7 +45,9 @@ async fn mark_task_done(
     Query(query): Query<MarkTaskDoneQuery>,
     State(store): State<TaskStore>,
 ) -> Result<Json<Task>, TaskStoreError> {
-    let task = store.mark_task_done(&task, &query.by).await?;
+    let task = store
+        .mark_task_done(&task, &query.by, &query.on.unwrap_or_else(today))
+        .await?;
     Ok(Json(task))
 }
 

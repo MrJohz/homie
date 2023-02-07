@@ -147,10 +147,11 @@ impl TaskStore {
         &self,
         task_name: &str,
         person: &str,
+        date: &NaiveDate,
     ) -> Result<Task, TaskStoreError> {
         sqlx::query(include_str!("./insert_completion.sql"))
             .bind(task_name)
-            .bind(today())
+            .bind(date)
             .bind(person)
             .execute(&self.conn)
             .await?;
@@ -360,7 +361,10 @@ mod tests {
             .await
             .unwrap();
 
-        let task = task_store.mark_task_done("Task", "arthur").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "arthur", &today())
+            .await
+            .unwrap();
         assert_eq!(task.name, "Task".to_owned());
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(
@@ -389,7 +393,10 @@ mod tests {
             .await
             .unwrap();
 
-        let task = task_store.mark_task_done("Task", "arthur").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "arthur", &today())
+            .await
+            .unwrap();
         assert_eq!(task.name, "Task".to_owned());
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(
@@ -419,12 +426,18 @@ mod tests {
             .unwrap();
 
         // complete for period until 1st
-        let task = task_store.mark_task_done("Task", "arthur").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "arthur", &today())
+            .await
+            .unwrap();
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(task.deadline, Deadline::Overdue(6));
 
         // complete for period 8th - 14th
-        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "bob", &today())
+            .await
+            .unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned()); // assignee updated
         assert_eq!(task.deadline, Deadline::Upcoming(1)); // next period starts on 8th and continues for 7 days
     }
@@ -452,16 +465,25 @@ mod tests {
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Overdue(4));
 
-        let task = task_store.mark_task_done("Task", "arthur").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "arthur", &today())
+            .await
+            .unwrap();
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(3));
 
-        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "bob", &today())
+            .await
+            .unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(10));
 
         // the same person does the task multiple times in a row
-        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "bob", &today())
+            .await
+            .unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(17));
     }
@@ -489,16 +511,25 @@ mod tests {
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Overdue(4));
 
-        let task = task_store.mark_task_done("Task", "arthur").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "arthur", &today())
+            .await
+            .unwrap();
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(7));
 
-        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "bob", &today())
+            .await
+            .unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(7));
 
         // the same person does the task multiple times in a row
-        let task = task_store.mark_task_done("Task", "bob").await.unwrap();
+        let task = task_store
+            .mark_task_done("Task", "bob", &today())
+            .await
+            .unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(7));
     }
@@ -537,7 +568,7 @@ mod tests {
         assert_eq!(task.deadline, Deadline::Overdue(4));
 
         let task = task_store
-            .mark_task_done("Schedule Task", "arthur")
+            .mark_task_done("Schedule Task", "arthur", &today())
             .await
             .unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());

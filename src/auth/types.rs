@@ -1,6 +1,9 @@
 use std::str::FromStr;
 
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{
+    http::{HeaderValue, StatusCode},
+    response::IntoResponse,
+};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize, sqlx::Encode, sqlx::Decode)]
 pub struct Token(uuid::Uuid);
@@ -11,17 +14,23 @@ impl sqlx::Type<sqlx::Sqlite> for Token {
     }
 }
 
-impl Token {
-    pub fn from_uuid(uuid: uuid::Uuid) -> Self {
-        Self(uuid)
-    }
-}
-
 impl FromStr for Token {
     type Err = AuthError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(s.parse()?))
+    }
+}
+
+impl From<&Token> for HeaderValue {
+    fn from(value: &Token) -> Self {
+        HeaderValue::from_str(&value.0.to_string()).unwrap()
+    }
+}
+
+impl Token {
+    pub fn from_uuid(uuid: uuid::Uuid) -> Self {
+        Self(uuid)
     }
 }
 
