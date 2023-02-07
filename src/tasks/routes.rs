@@ -12,9 +12,7 @@ use super::{store::TaskStoreError, types::Task, TaskStore};
 impl IntoResponse for TaskStoreError {
     fn into_response(self) -> axum::response::Response {
         match self {
-            TaskStoreError::FileIo(_)
-            | TaskStoreError::FileInvalidFormat(_)
-            | TaskStoreError::DbError(_) => {
+            TaskStoreError::DbError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
             }
             TaskStoreError::UnknownTaskName(_) | TaskStoreError::PersonNotInTaskRota(_) => {

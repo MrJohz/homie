@@ -10,10 +10,6 @@ use super::{
 pub enum TaskStoreError {
     // 500 type errors (it's probably our fault)
     #[error("underlying data could not be accessed or saved")]
-    FileIo(#[from] tokio::io::Error),
-    #[error("underlying data is corrupted")]
-    FileInvalidFormat(#[from] toml::de::Error),
-    #[error("underlying data could not be accessed or saved")]
     DbError(#[from] sqlx::Error),
 
     // 400 type errors (it's probably your fault)
@@ -127,8 +123,13 @@ impl TaskStore {
             ),
         >(include_str!("./select_one_task.sql"))
         .bind(task_name.to_lowercase())
-        .fetch_one(&self.conn)
+        .fetch_optional(&self.conn)
         .await?;
+
+        let row = match row {
+            Some(row) => row,
+            None => Err(TaskStoreError::UnknownTaskName(task_name.to_owned()))?,
+        };
 
         Ok(Task {
             id: row.0,
@@ -572,5 +573,17 @@ mod tests {
             .await;
 
         assert!(result.is_err())
+    }
+
+    #[sqlx::test]
+    async fn returns_error_if_fetched_task_does_not_exist(conn: sqlx::SqlitePool) {
+        time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
+        let task_store = TaskStore::new(conn);
+        let result = task_store.task("unknown").await.unwrap_err();
+
+        match result {
+            TaskStoreError::UnknownTaskName(name) => assert_eq!(name, "unknown"),
+            _ => panic!("incorrect error response"),
+        }
     }
 }
