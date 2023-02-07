@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::net::SocketAddr;
 
 use reqwest::Client;
@@ -5,9 +7,8 @@ use sqlx::SqlitePool;
 use tempfile::{tempdir, TempDir};
 use tokio::task::JoinHandle;
 
-use homie::{auth, db, server};
+use homie::{auth, db, server, tasks};
 
-#[allow(dead_code)]
 pub async fn harness() -> TestHarness {
     let file_handle = tempdir().unwrap();
     let conn = db::create_connection_in_location(file_handle.path()).await;
@@ -50,6 +51,9 @@ pub struct TestHarness {
 impl TestHarness {
     pub fn auth_store(&self) -> auth::AuthStore {
         auth::AuthStore::new(self.conn.clone())
+    }
+    pub fn task_store(&self) -> tasks::TaskStore {
+        tasks::TaskStore::new(self.conn.clone())
     }
     pub fn request(
         &self,

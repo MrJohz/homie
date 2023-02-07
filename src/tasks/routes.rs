@@ -16,7 +16,7 @@ impl IntoResponse for TaskStoreError {
             TaskStoreError::DbError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
             }
-            TaskStoreError::UnknownTaskName(_) | TaskStoreError::PersonNotInTaskRota(_) => {
+            TaskStoreError::UnknownTaskName(_) | TaskStoreError::PersonDoesNotExist(_) => {
                 (StatusCode::BAD_REQUEST, self.to_string()).into_response()
             }
         }

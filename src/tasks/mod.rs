@@ -5,4 +5,4 @@ mod types;
 
 pub use routes::routes;
 pub use store::{NewTask, TaskStore};
-pub use types::Routine;
+pub use types::{Routine, Task};

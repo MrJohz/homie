@@ -1,4 +1,4 @@
-.PHONY: all build-homie build-frontend copy-to-server
+.PHONY: all test-homie build-homie build-frontend copy-to-server
 
 PROFILE ?= "dev"
 
@@ -11,7 +11,10 @@ else
 endif
 SERVER_DIRECTORY ?= "~/opt/homie"
 
-all: build-homie
+all: build-homie test-homie
+
+test-homie:
+	cargo test --profile ${PROFILE}
 
 build-homie: build-frontend
 	${CARGO_COMMAND} --profile ${PROFILE}

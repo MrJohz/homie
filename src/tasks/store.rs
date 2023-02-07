@@ -15,8 +15,8 @@ pub enum TaskStoreError {
     // 400 type errors (it's probably your fault)
     #[error("unknown task name was used")]
     UnknownTaskName(String),
-    #[error("person not in task rota")]
-    PersonNotInTaskRota(String),
+    #[error("person does not exist")]
+    PersonDoesNotExist(String),
 }
 
 #[derive(Clone)]
@@ -32,14 +32,6 @@ impl TaskStore {
     pub async fn add_task(&self, mut new_task: NewTask) -> Result<(), TaskStoreError> {
         let mut transaction = self.conn.begin().await?;
 
-        new_task.starts_with = new_task.starts_with.to_lowercase();
-        for p in new_task.participants.iter_mut() {
-            *p = p.to_lowercase()
-        }
-
-        let mut reversed_people = new_task.participants.clone();
-        reversed_people.reverse();
-
         let (task_id,) = sqlx::query_as::<_, (TaskId,)>(include_str!("./insert_new_task.sql"))
             .bind(new_task.name)
             .bind(new_task.routine)
@@ -48,14 +40,20 @@ impl TaskStore {
             .await?;
 
         for person in &new_task.participants {
-            sqlx::query(include_str!("./insert_new_task_participant.sql"))
+            let result = sqlx::query(include_str!("./insert_new_task_participant.sql"))
                 .bind(task_id)
                 .bind(person)
                 .execute(&mut transaction)
                 .await?;
+
+            if result.rows_affected() == 0 {
+                Err(TaskStoreError::PersonDoesNotExist(person.to_owned()))?;
+            }
         }
 
-        let prev_person = next_assignee(&reversed_people, &new_task.starts_with);
+        new_task.participants.reverse();
+
+        let prev_person = next_assignee(&new_task.participants, &new_task.starts_with);
         let started_time = new_task.starts_on - Duration::days(new_task.duration.into());
         sqlx::query(include_str!("./insert_new_task_first_completion.sql"))
             .bind(task_id)
