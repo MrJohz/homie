@@ -99,11 +99,12 @@ impl TaskStore {
     }
 
     pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
+        let person = person.to_lowercase();
         Ok(self
             .tasks()
             .await?
             .into_iter()
-            .filter(|task| task.assigned_to == person)
+            .filter(|task| task.assigned_to.to_lowercase() == person)
             .collect())
     }
 
