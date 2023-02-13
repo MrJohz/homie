@@ -18,7 +18,7 @@ SPDX-License-Identifier: MPL-2.0
 - [x] Filters/sorting (and searching?)
   - [ ] But actually implement it
 - [x] Logout functionality
-- [ ] Add UI translations
+- [x] Add UI translations
 - [ ] Add API translations
 - [ ] Some level of token expiry and deletion
 - [x] Move tasks into SQLite
