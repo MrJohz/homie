@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import clsx from "clsx";
 import { BsExclamationCircle } from "solid-icons/bs";
 import { Show } from "solid-js";

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import { createContext, JSX } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import styles from "./Form.module.css";

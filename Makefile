@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 Jonathan Frere
+#
+# SPDX-License-Identifier: MPL-2.0
+
 .PHONY: all test-homie build-homie build-frontend copy-to-server
 
 PROFILE ?= "dev"

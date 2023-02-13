@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# SPDX-FileCopyrightText: 2023 Jonathan Frere
+#
+# SPDX-License-Identifier: MPL-2.0
+
 ##
 # Example of a convenience script for setting up a database
 # edit this and copy it to e.g. `initialise_db.sh`

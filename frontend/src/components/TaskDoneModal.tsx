@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import { createEffect, createSignal, on } from "solid-js";
 import { Button } from "../design/Button";
 import { Error } from "../design/Error";

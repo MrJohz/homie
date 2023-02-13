@@ -1,5 +1,9 @@
 #![allow(dead_code)]
 
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 use std::net::SocketAddr;
 
 use reqwest::Client;

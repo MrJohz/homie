@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 use std::{ffi::OsStr, path::Path};
 
 use axum::{http::header, routing::get, Router};

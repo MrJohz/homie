@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import styles from "./App.module.css";

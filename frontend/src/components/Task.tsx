@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import clsx from "clsx";
 import { add } from "date-fns";
 import { createSignal } from "solid-js";

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import { BsChevronDown, BsChevronUp } from "solid-icons/bs";
 import { createSignal, For, JSX, Show } from "solid-js";
 import styles from "./Header.module.css";

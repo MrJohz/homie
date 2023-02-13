@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 #[cfg(not(test))]
 pub fn today() -> chrono::NaiveDate {
     chrono::Local::now().date_naive()

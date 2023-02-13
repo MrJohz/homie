@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import { ITask } from "./types";
 
 export type Success<T> = { k: "ok"; value: T };

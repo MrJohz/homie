@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2023 Jonathan Frere
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
 .taskList {
   composes: margin-default gap-default page-width-col from "../design/_atoms.module.css";
   display: flex;

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import { JSX, splitProps } from "solid-js";
 import styles from "./IconButton.module.css";
 

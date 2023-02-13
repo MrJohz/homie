@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import clsx from "clsx";
 import { splitProps } from "solid-js";
 import { JSX } from "solid-js/jsx-runtime";

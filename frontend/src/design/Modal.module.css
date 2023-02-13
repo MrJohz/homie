@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2023 Jonathan Frere
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
 .modalWrapper {
   composes: shadow-default from "./_atoms.module.css";
   padding: 0;

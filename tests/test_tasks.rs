@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 mod common;
 use chrono::{Duration, Local};
 use homie::tasks::{Deadline, Task};

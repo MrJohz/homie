@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 use argon2::{password_hash::SaltString, PasswordHasher, PasswordVerifier};
 use rand_core::OsRng;
 use sqlx::SqlitePool;

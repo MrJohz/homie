@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import { createSignal } from "solid-js";
 import { createStore } from "solid-js/store";
 import { ITask } from "../types";

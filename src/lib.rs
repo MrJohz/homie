@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 use axum::{middleware, routing::IntoMakeService, Router};
 use sqlx::SqlitePool;
 

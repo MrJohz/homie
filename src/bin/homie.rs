@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2023 Jonathan Frere
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
 .header {
   composes: font-heading padding-default text-h1 page-width-col from "./_atoms.module.css";
   text-transform: uppercase;
