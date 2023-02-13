@@ -14,4 +14,9 @@ export default defineConfig({
   build: {
     target: "esnext",
   },
+  test: {
+    environment: "jsdom",
+    transformMode: { web: [/\.[jt]sx?$/] },
+    deps: { registerNodeLoader: true },
+  },
 });
