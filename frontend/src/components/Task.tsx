@@ -8,6 +8,7 @@ import { createSignal } from "solid-js";
 import { Button } from "../design/Button";
 import { FlexGap } from "../design/FlexGap";
 import { formatDate, formatRelativeDate } from "../stores/formatting";
+import { t } from "../translations";
 import { ITask } from "../types";
 import styles from "./Task.module.css";
 import { TaskDoneModal } from "./TaskDoneModal";
@@ -19,10 +20,10 @@ export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
   const dueDate = () => {
     const lastCompleted = new Date(props.task.last_completed);
     if (props.task.kind === "Interval") {
-      return (
-        "due " +
-        formatRelativeDate(add(lastCompleted, { days: props.task.length_days }))
+      const due = formatRelativeDate(
+        add(lastCompleted, { days: props.task.length_days })
       );
+      return t({ en: `due ${due}`, de: `${due} fällig` });
     } else {
       const start = add(lastCompleted, { days: 1 });
       const end = add(lastCompleted, { days: props.task.length_days });
@@ -48,7 +49,10 @@ export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
           textContent={dueDate()}
         />
         <FlexGap />
-        <Button onClick={[setOpen, true]}>Done</Button>
+        <Button
+          onClick={[setOpen, true]}
+          textContent={t({ en: "Done", de: "Erledigt" })}
+        />
       </div>
       <TaskDoneModal
         open={isOpen()}
@@ -72,8 +76,6 @@ export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
               once: true,
             }
           );
-
-          // props.onUpdate(task);
         }}
       />
     </div>

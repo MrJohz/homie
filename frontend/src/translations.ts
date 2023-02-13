@@ -54,6 +54,7 @@ export function setup(known: string[]) {
 }
 
 export function t(args: Record<string, string>): string {
+  if (!LANGUAGE) throw new Error("No language selected");
   if (!(LANGUAGE in args))
     throw new Error(`${LANGUAGE} is not present in args`);
   return args[LANGUAGE];

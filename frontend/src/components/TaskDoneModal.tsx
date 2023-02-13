@@ -10,6 +10,7 @@ import { InputRow } from "../design/InputRow";
 import { Modal, ModalActions, ModalHeader } from "../design/Modal";
 import { updateTask } from "../resources";
 import { useAuth } from "../stores/useAuth";
+import { t } from "../translations";
 import { ITask } from "../types";
 
 export function TaskDoneModal(props: {
@@ -43,8 +44,8 @@ export function TaskDoneModal(props: {
           if (result.k == "err") {
             return setError(
               result.value[0] === "BAD_AUTH"
-                ? "Unauthorized"
-                : "Connection down"
+                ? t({ en: "Unauthorised", de: "Unerlaubt" })
+                : t({ en: "Connection down", de: "Verbindung unterbrochen" })
             );
           }
 
@@ -53,17 +54,23 @@ export function TaskDoneModal(props: {
       >
         <InputRow
           type="select"
-          label="Done by"
+          label={t({ en: "Done by", de: "Erledigt von" })}
           value={doneBy()}
           items={props.task.participants}
           onChange={(e) => setDoneBy(e.currentTarget.value)}
         />
         <ModalActions>
-          <Button type="reset" variant="subtle" onClick={props.onCancel}>
-            Cancel
-          </Button>
+          <Button
+            type="reset"
+            variant="subtle"
+            onClick={props.onCancel}
+            textContent={t({ en: "Cancel", de: "Abbrechen" })}
+          />
           <Error mergeRight error={error()} />
-          <Button type="submit">Done</Button>
+          <Button
+            type="submit"
+            textContent={t({ en: "Done", de: "Abschließen" })}
+          />
         </ModalActions>
       </Form>
     </Modal>

@@ -9,6 +9,7 @@ import { Form, validateNonEmptyString } from "../design/Form";
 import { InputRow } from "../design/InputRow";
 import { Modal, ModalActions, ModalHeader } from "../design/Modal";
 import { useAuth } from "../stores/useAuth";
+import { t } from "../translations";
 
 export function LoginModal() {
   const [auth, authActions] = useAuth();
@@ -27,16 +28,23 @@ export function LoginModal() {
     }
 
     if (response.value[0] === "BAD_CONNECTION") {
-      setError("Server error, try again");
+      setError(
+        t({
+          en: "Server error, try again",
+          de: "Serverfehler, bitte nochmal probieren",
+        })
+      );
     } else {
-      setError("Invalid login details");
+      setError(
+        t({ en: "Invalid login details", de: "Ungültige Anmeldedaten" })
+      );
     }
   }
 
   return (
     <Show when={auth().state === "unauthed"}>
       <Modal open>
-        <ModalHeader>Login</ModalHeader>
+        <ModalHeader textContent={t({ en: "Log In", de: "Anmelden" })} />
         <Form onSubmit={login}>
           <InputRow
             type="text"
@@ -54,9 +62,11 @@ export function LoginModal() {
           />
           <ModalActions>
             <Error mergeRight error={error()} />
-            <Button type="submit" variant="subtle">
-              Login
-            </Button>
+            <Button
+              type="submit"
+              variant="subtle"
+              textContent={t({ en: "Log In", de: "Anmelden" })}
+            />
           </ModalActions>
         </Form>
       </Modal>

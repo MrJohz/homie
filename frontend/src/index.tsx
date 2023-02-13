@@ -7,6 +7,9 @@ import { render } from "solid-js/web";
 import { App } from "./App";
 import "./index.css";
 import { AuthProvider } from "./stores/useAuth";
+import { setup } from "./translations";
+
+setup(["en", "de"]);
 
 render(
   () => (

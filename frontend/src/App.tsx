@@ -10,6 +10,7 @@ import { TaskList } from "./components/TaskList";
 import { Header } from "./design/Header";
 import { fetchTasks } from "./resources";
 import { useAuth } from "./stores/useAuth";
+import { t } from "./translations";
 import { ITask } from "./types";
 
 export function App() {
@@ -55,7 +56,7 @@ export function App() {
           },
           {
             type: "action",
-            name: "Logout",
+            name: t({ en: "Log out", de: "Abmelden" }),
             onClick: () => authActions.logout(),
           },
         ]}

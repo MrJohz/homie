@@ -4,6 +4,7 @@
 
 import { createSignal } from "solid-js";
 import { createStore } from "solid-js/store";
+import { t } from "../translations";
 import { ITask } from "../types";
 
 export type SortFilter = (tasks: ITask[]) => ITask[];
@@ -57,13 +58,15 @@ export function SortAndFilter(props: {
   });
 
   const summaryString = () => {
-    const parts = ["Showing "];
-    if (filterSettings.assignee === false) {
-      parts.push("all tasks");
-    } else {
-      parts.push("tasks assigned to", filterSettings.assignee);
-    }
-    return parts;
+    const shown =
+      filterSettings.assignee === false
+        ? t({ en: "all tasks", de: "alle Aufgaben" })
+        : t({
+            en: `tasks assigned to ${filterSettings.assignee}`,
+            de: `${filterSettings.assignee} zugewiesenen Aufgaben`,
+          });
+
+    return t({ en: `Showing ${shown}`, de: `${shown} angezeigt` });
   };
   return <div>{summaryString()}</div>;
 }
