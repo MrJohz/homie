@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Jonathan Frere
+//
+// SPDX-License-Identifier: MPL-2.0
+
 import { defineConfig } from "vite";
 import solidPlugin from "vite-plugin-solid";
 
