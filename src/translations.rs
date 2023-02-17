@@ -1,9 +1,21 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 enum Language {
     #[default]
     Catchall,
     LanguageOnly(String),
     LanguageScript(String, String),
+}
+
+impl Display for Language {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Language::Catchall => "".fmt(f),
+            Language::LanguageOnly(l) => l.fmt(f),
+            Language::LanguageScript(l, s) => write!(f, "{l}-{s}"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]

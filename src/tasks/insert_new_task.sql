@@ -1,8 +1,16 @@
 -- SPDX-FileCopyrightText: 2023 Jonathan Frere
 --
 -- SPDX-License-Identifier: MPL-2.0
+BEGIN TRANSACTION;
 
 INSERT INTO
-  tasks (task_name, kind, duration)
+  tasks (kind, duration)
 VALUES
-  (?, ?, ?) RETURNING tasks.id
+  (?, ?) RETURNING tasks.id;
+
+INSERT INTO
+  task_translations (task_id, task_name)
+VALUES
+  (last_insert_rowid (), ?);
+
+COMMIT TRANSACTION;

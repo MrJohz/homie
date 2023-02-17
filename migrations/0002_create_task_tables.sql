@@ -1,14 +1,18 @@
 -- SPDX-FileCopyrightText: 2023 Jonathan Frere
 --
 -- SPDX-License-Identifier: MPL-2.0
-
 CREATE TABLE
   tasks (
     id integer primary key autoincrement,
-    task_name text NOT NULL,
     kind text NOT NULL,
-    duration integer NOT NULL,
-    UNIQUE (task_name)
+    duration integer NOT NULL
+  );
+
+CREATE TABLE
+  task_translations (
+    task_id integer NOT NULL REFERENCES tasks (id),
+    task_name text NOT NULL,
+    UNIQUE (task_id, task_name)
   );
 
 CREATE TABLE
@@ -25,6 +29,8 @@ CREATE TABLE
     completed_on text NOT NULL,
     initial integer NOT NULL DEFAULT FALSE
   );
+
+CREATE INDEX task_translations_task_id ON task_translations (task_id);
 
 CREATE INDEX task_participant_link_task_id ON task_participant_link (task_id);
 
@@ -46,7 +52,6 @@ WITH
   )
 SELECT
   tasks.id as id,
-  tasks.task_name as name,
   tasks.kind as kind,
   tasks.duration as duration,
   json_group_array (participants.username) as participants,
