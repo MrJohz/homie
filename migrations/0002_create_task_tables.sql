@@ -11,8 +11,9 @@ CREATE TABLE
 CREATE TABLE
   task_translations (
     task_id integer NOT NULL REFERENCES tasks (id),
+    lang text NOT NULL,
     task_name text NOT NULL,
-    UNIQUE (task_id, task_name)
+    UNIQUE (task_id, lang)
   );
 
 CREATE TABLE
@@ -30,7 +31,7 @@ CREATE TABLE
     initial integer NOT NULL DEFAULT FALSE
   );
 
-CREATE INDEX task_translations_task_id ON task_translations (task_id);
+CREATE INDEX task_translations_task_id ON task_translations (task_id, lang);
 
 CREATE INDEX task_participant_link_task_id ON task_participant_link (task_id);
 

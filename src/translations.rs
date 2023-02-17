@@ -1,7 +1,7 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-enum Language {
+pub enum Language {
     #[default]
     Catchall,
     LanguageOnly(String),
@@ -15,6 +15,20 @@ impl Display for Language {
             Language::LanguageOnly(l) => l.fmt(f),
             Language::LanguageScript(l, s) => write!(f, "{l}-{s}"),
         }
+    }
+}
+
+impl FromStr for Language {
+    type Err = ();
+
+    fn from_str(specifier: &str) -> Result<Self, Self::Err> {
+        Ok(parse(specifier))
+    }
+}
+
+impl<T: AsRef<str>> From<T> for Language {
+    fn from(value: T) -> Self {
+        parse(value.as_ref())
     }
 }
 

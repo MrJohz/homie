@@ -2,8 +2,12 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+use std::collections::HashMap;
+
 use chrono::{Duration, NaiveDate};
 use sqlx::{types::Json, SqlitePool};
+
+use crate::translations::Language;
 
 use super::{
     time::today,
@@ -19,6 +23,8 @@ pub enum TaskStoreError {
     // 400 type errors (it's probably your fault)
     #[error("unknown task name was used")]
     UnknownTaskName(String),
+    #[error("unknown task name was used")]
+    UnknownTaskId(TaskId),
     #[error("person does not exist")]
     PersonDoesNotExist(String),
 }
@@ -37,11 +43,19 @@ impl TaskStore {
         let mut transaction = self.conn.begin().await?;
 
         let (task_id,) = sqlx::query_as::<_, (TaskId,)>(include_str!("./insert_new_task.sql"))
-            .bind(new_task.name)
             .bind(new_task.routine)
             .bind(new_task.duration)
             .fetch_one(&mut transaction)
             .await?;
+
+        for (lang, name) in new_task.names.drain() {
+            sqlx::query(include_str!("./insert_new_task_name.sql"))
+                .bind(task_id)
+                .bind(lang)
+                .bind(name)
+                .execute(&mut transaction)
+                .await?;
+        }
 
         for person in &new_task.participants {
             let result = sqlx::query(include_str!("./insert_new_task_participant.sql"))
@@ -71,7 +85,7 @@ impl TaskStore {
         Ok(())
     }
 
-    pub async fn tasks(&self) -> Result<Vec<Task>, TaskStoreError> {
+    pub async fn tasks(&self, language: &Language) -> Result<Vec<Task>, TaskStoreError> {
         let rows = sqlx::query_as::<
             _,
             (
@@ -84,6 +98,7 @@ impl TaskStore {
                 String,
             ),
         >(include_str!("./select_all_tasks.sql"))
+        .bind(language.to_string())
         .fetch_all(&self.conn)
         .await?;
 
@@ -102,17 +117,21 @@ impl TaskStore {
             .collect())
     }
 
-    pub async fn tasks_for(&self, person: &str) -> Result<Vec<Task>, TaskStoreError> {
+    pub async fn tasks_for(
+        &self,
+        person: &str,
+        language: &Language,
+    ) -> Result<Vec<Task>, TaskStoreError> {
         let person = person.to_lowercase();
         Ok(self
-            .tasks()
+            .tasks(language)
             .await?
             .into_iter()
             .filter(|task| task.assigned_to.to_lowercase() == person)
             .collect())
     }
 
-    pub async fn task(&self, task_name: &str) -> Result<Task, TaskStoreError> {
+    pub async fn task(&self, task_id: TaskId, language: &Language) -> Result<Task, TaskStoreError> {
         let row = sqlx::query_as::<
             _,
             (
@@ -125,13 +144,14 @@ impl TaskStore {
                 String,
             ),
         >(include_str!("./select_one_task.sql"))
-        .bind(task_name.to_lowercase())
+        .bind(language.to_string())
+        .bind(task_id)
         .fetch_optional(&self.conn)
         .await?;
 
         let row = match row {
             Some(row) => row,
-            None => Err(TaskStoreError::UnknownTaskName(task_name.to_owned()))?,
+            None => Err(TaskStoreError::UnknownTaskId(task_id))?,
         };
 
         Ok(Task {
@@ -148,18 +168,17 @@ impl TaskStore {
 
     pub async fn mark_task_done(
         &self,
-        task_name: &str,
+        task_id: TaskId,
         person: &str,
         date: &NaiveDate,
-    ) -> Result<Task, TaskStoreError> {
+    ) -> Result<(), TaskStoreError> {
         sqlx::query(include_str!("./insert_completion.sql"))
-            .bind(task_name)
+            .bind(task_id)
             .bind(date)
             .bind(person)
             .execute(&self.conn)
             .await?;
-
-        self.task(task_name).await
+        Ok(())
     }
 }
 
@@ -179,7 +198,7 @@ fn next_deadline(task_length: u16, last_completed: NaiveDate) -> Deadline {
 }
 
 pub struct NewTask {
-    pub name: String,
+    pub names: HashMap<String, String>,
     pub routine: Routine,
     pub duration: u16,
     pub participants: Vec<String>,
@@ -193,10 +212,17 @@ mod tests {
 
     use super::*;
 
+    fn names(names: &[(&str, &str)]) -> HashMap<String, String> {
+        names
+            .iter()
+            .map(|(l, r)| (l.to_string(), r.to_string()))
+            .collect()
+    }
+
     #[sqlx::test]
     async fn listing_tasks_for_empty_store_gives_no_results(conn: sqlx::SqlitePool) {
         let task_store = TaskStore::new(conn);
-        assert_eq!(task_store.tasks().await.unwrap(), vec![]);
+        assert_eq!(task_store.tasks(&"en".into()).await.unwrap(), vec![]);
     }
 
     #[sqlx::test]
@@ -209,7 +235,7 @@ mod tests {
         auth_store.create_test_user("claire").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Test Task".into(),
+                names: names(&[("en", "Test Task 1")]),
                 starts_with: "bob".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -220,7 +246,7 @@ mod tests {
             .unwrap();
         task_store
             .add_task(NewTask {
-                name: "Test Task 2".into(),
+                names: names(&[("en", "Test Task 2")]),
                 starts_with: "claire".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -230,9 +256,9 @@ mod tests {
             .await
             .unwrap();
 
-        let tasks = task_store.tasks().await.unwrap();
+        let tasks = task_store.tasks(&"en".into()).await.unwrap();
         assert_eq!(tasks.len(), 2);
-        assert_eq!(tasks[0].name, "Test Task".to_owned());
+        assert_eq!(tasks[0].name, "Test Task 1".to_owned());
         assert_eq!(tasks[1].name, "Test Task 2".to_owned());
     }
 
@@ -246,7 +272,7 @@ mod tests {
         auth_store.create_test_user("bob").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Test Task 1".into(),
+                names: names(&[("en", "Test Task 1")]),
                 starts_with: "bob".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -257,7 +283,7 @@ mod tests {
             .unwrap();
         task_store
             .add_task(NewTask {
-                name: "Test Task 2".into(),
+                names: names(&[("en", "Test Task 2")]),
                 starts_with: "claire".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -268,7 +294,7 @@ mod tests {
             .unwrap();
         task_store
             .add_task(NewTask {
-                name: "Test Task 3".into(),
+                names: names(&[("en", "Test Task 3")]),
                 starts_with: "bob".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -278,16 +304,16 @@ mod tests {
             .await
             .unwrap();
 
-        let bobs_tasks = task_store.tasks_for("bob").await.unwrap();
+        let bobs_tasks = task_store.tasks_for("bob", &"en".into()).await.unwrap();
         assert_eq!(bobs_tasks.len(), 2);
         assert_eq!(bobs_tasks[0].name, "Test Task 1");
         assert_eq!(bobs_tasks[1].name, "Test Task 3");
 
-        let claires_tasks = task_store.tasks_for("claire").await.unwrap();
+        let claires_tasks = task_store.tasks_for("claire", &"en".into()).await.unwrap();
         assert_eq!(claires_tasks.len(), 1);
         assert_eq!(claires_tasks[0].name, "Test Task 2");
 
-        let arthurs_tasks = task_store.tasks_for("arthur").await.unwrap();
+        let arthurs_tasks = task_store.tasks_for("arthur", &"en".into()).await.unwrap();
         assert_eq!(arthurs_tasks.len(), 0);
 
         assert_eq!(
@@ -309,7 +335,7 @@ mod tests {
         auth_store.create_test_user("bob").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Test Task 1".into(),
+                names: names(&[("en", "Test Task 1")]),
                 starts_with: "bob".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -320,7 +346,7 @@ mod tests {
             .unwrap();
         task_store
             .add_task(NewTask {
-                name: "Test Task 2".into(),
+                names: names(&[("en", "Test Task 2")]),
                 starts_with: "bob".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -330,14 +356,14 @@ mod tests {
             .await
             .unwrap();
 
-        let task = task_store.task("Test Task 1").await.unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.name, "Test Task 1".to_owned());
         assert_eq!(
             task.last_completed,
             NaiveDate::from_ymd_opt(2020, 1, 3).unwrap()
         );
 
-        let task = task_store.task("Test Task 2").await.unwrap();
+        let task = task_store.task(2.into(), &"en".into()).await.unwrap();
         assert_eq!(task.name, "Test Task 2".to_owned());
         assert_eq!(
             task.last_completed,
@@ -354,7 +380,7 @@ mod tests {
         auth_store.create_test_user("bob").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Task".into(),
+                names: names(&[("en", "Task")]),
                 starts_with: "arthur".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -364,10 +390,11 @@ mod tests {
             .await
             .unwrap();
 
-        let task = task_store
-            .mark_task_done("Task", "arthur", &today())
+        task_store
+            .mark_task_done(1.into(), "arthur", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.name, "Task".to_owned());
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(
@@ -386,7 +413,7 @@ mod tests {
         auth_store.create_test_user("bob").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Task".into(),
+                names: names(&[("en", "Task")]),
                 starts_with: "arthur".into(),
                 routine: Routine::Schedule,
                 duration: 7,
@@ -396,10 +423,11 @@ mod tests {
             .await
             .unwrap();
 
-        let task = task_store
-            .mark_task_done("Task", "arthur", &today())
+        task_store
+            .mark_task_done(1.into(), "arthur", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.name, "Task".to_owned());
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(
@@ -418,7 +446,7 @@ mod tests {
         auth_store.create_test_user("bob").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Task".into(),
+                names: names(&[("en", "Task")]),
                 starts_with: "arthur".into(),
                 routine: Routine::Schedule,
                 duration: 7,
@@ -429,18 +457,20 @@ mod tests {
             .unwrap();
 
         // complete for period until 1st
-        let task = task_store
-            .mark_task_done("Task", "arthur", &today())
+        task_store
+            .mark_task_done(1.into(), "arthur", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(task.deadline, Deadline::Overdue(6));
 
         // complete for period 8th - 14th
-        let task = task_store
-            .mark_task_done("Task", "bob", &today())
+        task_store
+            .mark_task_done(1.into(), "bob", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned()); // assignee updated
         assert_eq!(task.deadline, Deadline::Upcoming(1)); // next period starts on 8th and continues for 7 days
     }
@@ -454,7 +484,7 @@ mod tests {
         auth_store.create_test_user("bob").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Task".into(),
+                names: names(&[("en", "Task")]),
                 starts_with: "arthur".into(),
                 routine: Routine::Schedule,
                 duration: 7,
@@ -464,29 +494,32 @@ mod tests {
             .await
             .unwrap();
 
-        let task = task_store.task("Task").await.unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Overdue(4));
 
-        let task = task_store
-            .mark_task_done("Task", "arthur", &today())
+        task_store
+            .mark_task_done(1.into(), "arthur", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(3));
 
-        let task = task_store
-            .mark_task_done("Task", "bob", &today())
+        task_store
+            .mark_task_done(1.into(), "bob", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(10));
 
         // the same person does the task multiple times in a row
-        let task = task_store
-            .mark_task_done("Task", "bob", &today())
+        task_store
+            .mark_task_done(1.into(), "bob", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(17));
     }
@@ -500,7 +533,7 @@ mod tests {
         auth_store.create_test_user("bob").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Task".into(),
+                names: names(&[("en", "Task")]),
                 starts_with: "arthur".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -510,29 +543,32 @@ mod tests {
             .await
             .unwrap();
 
-        let task = task_store.task("Task").await.unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Overdue(4));
 
-        let task = task_store
-            .mark_task_done("Task", "arthur", &today())
+        task_store
+            .mark_task_done(1.into(), "arthur", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "bob".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(7));
 
-        let task = task_store
-            .mark_task_done("Task", "bob", &today())
+        task_store
+            .mark_task_done(1.into(), "bob", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(7));
 
         // the same person does the task multiple times in a row
-        let task = task_store
-            .mark_task_done("Task", "bob", &today())
+        task_store
+            .mark_task_done(1.into(), "bob", &today())
             .await
             .unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(7));
     }
@@ -545,7 +581,7 @@ mod tests {
         auth_store.create_test_user("arthur").await.unwrap();
         task_store
             .add_task(NewTask {
-                name: "Interval Task".into(),
+                names: names(&[("en", "Interval Task")]),
                 starts_with: "arthur".into(),
                 routine: Routine::Interval,
                 duration: 7,
@@ -556,7 +592,7 @@ mod tests {
             .unwrap();
         task_store
             .add_task(NewTask {
-                name: "Schedule Task".into(),
+                names: names(&[("en", "Schedule Task")]),
                 starts_with: "arthur".into(),
                 routine: Routine::Schedule,
                 duration: 7,
@@ -566,57 +602,27 @@ mod tests {
             .await
             .unwrap();
 
-        let task = task_store.task("Interval Task").await.unwrap();
+        let task = task_store.task(1.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Overdue(4));
 
-        let task = task_store
-            .mark_task_done("Schedule Task", "arthur", &today())
+        task_store
+            .mark_task_done(2.into(), "arthur", &today())
             .await
             .unwrap();
+        let task = task_store.task(2.into(), &"en".into()).await.unwrap();
         assert_eq!(task.assigned_to, "arthur".to_owned());
         assert_eq!(task.deadline, Deadline::Upcoming(3));
-    }
-
-    #[sqlx::test]
-    async fn prevents_two_tasks_from_having_the_same_name(conn: sqlx::SqlitePool) {
-        time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
-        let task_store = TaskStore::new(conn.clone());
-        let auth_store = AuthStore::new(conn);
-        auth_store.create_test_user("arthur").await.unwrap();
-        task_store
-            .add_task(NewTask {
-                name: "Task".into(),
-                starts_with: "arthur".into(),
-                routine: Routine::Interval,
-                duration: 7,
-                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
-                participants: vec!["arthur".into()],
-            })
-            .await
-            .unwrap();
-        let result = task_store
-            .add_task(NewTask {
-                name: "Task".into(),
-                starts_with: "arthur".into(),
-                routine: Routine::Schedule,
-                duration: 7,
-                starts_on: NaiveDate::from_ymd_opt(2020, 1, 10).unwrap(),
-                participants: vec!["arthur".into()],
-            })
-            .await;
-
-        assert!(result.is_err())
     }
 
     #[sqlx::test]
     async fn returns_error_if_fetched_task_does_not_exist(conn: sqlx::SqlitePool) {
         time::mock::set(NaiveDate::from_ymd_opt(2020, 1, 14).unwrap());
         let task_store = TaskStore::new(conn);
-        let result = task_store.task("unknown").await.unwrap_err();
+        let result = task_store.task(4.into(), &"en".into()).await.unwrap_err();
 
         match result {
-            TaskStoreError::UnknownTaskName(name) => assert_eq!(name, "unknown"),
+            TaskStoreError::UnknownTaskId(name) => assert_eq!(name, 4.into()),
             _ => panic!("incorrect error response"),
         }
     }

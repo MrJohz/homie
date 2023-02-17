@@ -12,7 +12,12 @@ use axum::{
 use chrono::NaiveDate;
 use sqlx::SqlitePool;
 
-use super::{store::TaskStoreError, time::today, types::Task, TaskStore};
+use super::{
+    store::TaskStoreError,
+    time::today,
+    types::{Task, TaskId},
+    TaskStore,
+};
 
 impl IntoResponse for TaskStoreError {
     fn into_response(self) -> axum::response::Response {
@@ -20,7 +25,9 @@ impl IntoResponse for TaskStoreError {
             TaskStoreError::DbError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
             }
-            TaskStoreError::UnknownTaskName(_) | TaskStoreError::PersonDoesNotExist(_) => {
+            TaskStoreError::UnknownTaskName(_)
+            | TaskStoreError::UnknownTaskId(_)
+            | TaskStoreError::PersonDoesNotExist(_) => {
                 (StatusCode::BAD_REQUEST, self.to_string()).into_response()
             }
         }
@@ -28,14 +35,14 @@ impl IntoResponse for TaskStoreError {
 }
 
 async fn list_all_tasks(State(store): State<TaskStore>) -> Result<Json<Vec<Task>>, TaskStoreError> {
-    store.tasks().await.map(Json)
+    store.tasks(&"en".into()).await.map(Json)
 }
 
 async fn tasks_for_person(
     Path(person): Path<String>,
     State(store): State<TaskStore>,
 ) -> Result<Json<Vec<Task>>, TaskStoreError> {
-    store.tasks_for(&person).await.map(Json)
+    store.tasks_for(&person, &"en".into()).await.map(Json)
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -45,14 +52,14 @@ struct MarkTaskDoneQuery {
 }
 
 async fn mark_task_done(
-    Path(task): Path<String>,
+    Path(task_id): Path<TaskId>,
     Query(query): Query<MarkTaskDoneQuery>,
     State(store): State<TaskStore>,
 ) -> Result<Json<Task>, TaskStoreError> {
-    let task = store
-        .mark_task_done(&task, &query.by, &query.on.unwrap_or_else(today))
+    store
+        .mark_task_done(task_id, &query.by, &query.on.unwrap_or_else(today))
         .await?;
-    Ok(Json(task))
+    Ok(Json(store.task(task_id, &"en".into()).await?))
 }
 
 pub fn routes(conn: SqlitePool) -> Router {

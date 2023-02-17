@@ -4,4 +4,15 @@
 INSERT INTO
   completions (task_id, completed_on, completed_by)
 VALUES
-  (?, ?, ?)
+  (
+    ?,
+    ?,
+    (
+      SELECT
+        users.id
+      FROM
+        users
+      WHERE
+        users.username = ? COLLATE NOCASE
+    )
+  )

@@ -30,6 +30,13 @@ impl sqlx::Type<Sqlite> for TaskId {
     }
 }
 
+#[cfg(test)]
+impl From<i32> for TaskId {
+    fn from(value: i32) -> Self {
+        TaskId(value)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Deadline {
     Upcoming(u16),

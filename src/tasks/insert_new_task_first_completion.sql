@@ -3,5 +3,14 @@
 -- SPDX-License-Identifier: MPL-2.0
 INSERT INTO
   completions (task_id, completed_on, completed_by, initial)
-VALUES
-  (?, ?, ?, TRUE)
+SELECT
+  ?,
+  ?,
+  id,
+  TRUE
+FROM
+  users
+WHERE
+  users.username = ? COLLATE nocase
+LIMIT
+  1

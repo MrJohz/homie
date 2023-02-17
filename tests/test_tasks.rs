@@ -3,9 +3,18 @@
 // SPDX-License-Identifier: MPL-2.0
 
 mod common;
+use std::collections::HashMap;
+
 use chrono::{Duration, Local};
 use homie::tasks::{Deadline, Task};
 use reqwest::Method;
+
+fn names(names: &[(&str, &str)]) -> HashMap<String, String> {
+    names
+        .iter()
+        .map(|(l, r)| (l.to_string(), r.to_string()))
+        .collect()
+}
 
 #[tokio::test]
 async fn fetches_empty_list_of_tasks() {
@@ -31,7 +40,7 @@ async fn fetches_tasks_that_exist() {
     server
         .task_store()
         .add_task(homie::tasks::NewTask {
-            name: "Task 1".into(),
+            names: names(&[("en", "Task 1")]),
             routine: homie::tasks::Routine::Interval,
             duration: 7,
             participants: vec!["Kevin".to_owned(), "Bob".to_owned()],
@@ -64,7 +73,7 @@ async fn fetches_tasks_for_one_person() {
     server
         .task_store()
         .add_task(homie::tasks::NewTask {
-            name: "Task 1".into(),
+            names: names(&[("en", "Task 1")]),
             routine: homie::tasks::Routine::Interval,
             duration: 7,
             participants: vec!["Kevin".to_owned(), "Bob".to_owned()],
@@ -115,7 +124,7 @@ async fn fetches_tasks_for_people_case_insensitive() {
     server
         .task_store()
         .add_task(homie::tasks::NewTask {
-            name: "Task 1".into(),
+            names: names(&[("en", "Task 1")]),
             routine: homie::tasks::Routine::Interval,
             duration: 7,
             participants: vec!["Kevin".to_owned()],
@@ -167,7 +176,7 @@ async fn updates_tasks_for_current_day() {
     server
         .task_store()
         .add_task(homie::tasks::NewTask {
-            name: "Task 1".into(),
+            names: names(&[("en", "Task 1")]),
             routine: homie::tasks::Routine::Interval,
             duration: 7,
             participants: vec!["Kevin".to_owned(), "Bob".to_owned()],
@@ -178,74 +187,7 @@ async fn updates_tasks_for_current_day() {
         .unwrap();
 
     let updated = server
-        .request(
-            Method::POST,
-            "/api/tasks/actions/mark_task_done/Task%201?by=Bob",
-        )
-        .send()
-        .await
-        .unwrap()
-        .json::<Task>()
-        .await
-        .unwrap();
-
-    assert_eq!(updated.deadline, Deadline::Upcoming(7));
-    assert_eq!(updated.last_completed, Local::now().date_naive());
-}
-
-#[tokio::test]
-async fn task_update_is_case_insensitive() {
-    let server = common::harness_with_token().await;
-    server.auth_store().create_user("Kevin", "").await.unwrap();
-    server.auth_store().create_user("Bob", "").await.unwrap();
-    server
-        .task_store()
-        .add_task(homie::tasks::NewTask {
-            name: "Task 1".into(),
-            routine: homie::tasks::Routine::Interval,
-            duration: 7,
-            participants: vec!["Kevin".to_owned(), "Bob".to_owned()],
-            starts_on: (Local::now() - Duration::days(10)).date_naive(),
-            starts_with: "Kevin".to_owned(),
-        })
-        .await
-        .unwrap();
-
-    let updated = server
-        .request(
-            Method::POST,
-            "/api/tasks/actions/mark_task_done/Task%201?by=Bob",
-        )
-        .send()
-        .await
-        .unwrap()
-        .json::<Task>()
-        .await
-        .unwrap();
-
-    assert_eq!(updated.deadline, Deadline::Upcoming(7));
-    assert_eq!(updated.last_completed, Local::now().date_naive());
-
-    let updated = server
-        .request(
-            Method::POST,
-            "/api/tasks/actions/mark_task_done/TASK%201?by=BOB",
-        )
-        .send()
-        .await
-        .unwrap()
-        .json::<Task>()
-        .await
-        .unwrap();
-
-    assert_eq!(updated.deadline, Deadline::Upcoming(7));
-    assert_eq!(updated.last_completed, Local::now().date_naive());
-
-    let updated = server
-        .request(
-            Method::POST,
-            "/api/tasks/actions/mark_task_done/taSK%201?by=boB",
-        )
+        .request(Method::POST, "/api/tasks/actions/mark_task_done/1?by=Bob")
         .send()
         .await
         .unwrap()
@@ -265,7 +207,7 @@ async fn task_update_can_set_date_explicitly() {
     server
         .task_store()
         .add_task(homie::tasks::NewTask {
-            name: "Task 1".into(),
+            names: names(&[("en", "Task 1")]),
             routine: homie::tasks::Routine::Interval,
             duration: 7,
             participants: vec!["Kevin".to_owned(), "Bob".to_owned()],
@@ -282,7 +224,7 @@ async fn task_update_can_set_date_explicitly() {
     let updated = server
         .request(
             Method::POST,
-            format!("/api/tasks/actions/mark_task_done/Task%201?by=Bob&on={before_yesterday}"),
+            format!("/api/tasks/actions/mark_task_done/1?by=Bob&on={before_yesterday}"),
         )
         .send()
         .await
@@ -297,7 +239,7 @@ async fn task_update_can_set_date_explicitly() {
     let updated = server
         .request(
             Method::POST,
-            format!("/api/tasks/actions/mark_task_done/Task%201?by=Bob&on={today}"),
+            format!("/api/tasks/actions/mark_task_done/1?by=Bob&on={today}"),
         )
         .send()
         .await
@@ -312,7 +254,7 @@ async fn task_update_can_set_date_explicitly() {
     let updated = server
         .request(
             Method::POST,
-            format!("/api/tasks/actions/mark_task_done/Task%201?by=Bob&on={after_tomorrow}"),
+            format!("/api/tasks/actions/mark_task_done/1?by=Bob&on={after_tomorrow}"),
         )
         .send()
         .await
