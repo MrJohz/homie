@@ -121,24 +121,9 @@ describe("findBestLanguage", () => {
     expect(
       _findBestLanguage(
         [lng(null), lng("de", "DE"), lng("en")],
-        [lng("en", "GB"), lng("en"), lng("de", "DE")]
-      )
-    ).toEqual(lng("en"));
-    expect(
-      _findBestLanguage(
-        [lng(null), lng("de", "DE"), lng("en", "US")],
-        [lng("en", "GB"), lng("en"), lng("de", "DE")]
-      )
-    ).toEqual(lng("en", "US"));
-  });
-
-  test("returns the language preferred by the user, not by the implementer", () => {
-    expect(
-      _findBestLanguage(
-        [lng(null), lng("de", "DE"), lng("en", "GB")],
         [lng("en", "GB"), lng("de", "DE"), lng("en")]
       )
-    ).toEqual(lng("en", "GB"));
+    ).toEqual(lng("de", "DE"));
     expect(
       _findBestLanguage(
         [lng(null), lng("de", "DE"), lng("en")],

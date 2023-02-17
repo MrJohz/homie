@@ -9,6 +9,7 @@ pub mod auth;
 pub mod db;
 pub mod static_files;
 pub mod tasks;
+mod translations;
 
 pub fn server(conn: SqlitePool) -> IntoMakeService<Router> {
     let auth = auth::AuthStore::new(conn.clone());

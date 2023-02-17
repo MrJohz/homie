@@ -9,9 +9,15 @@ let LANGUAGE = "";
 
 function matches(spec: Language, language: Language): MatchLevel {
   if (spec.language == null) return 1;
-  if (spec.language !== language.language) return 0;
-  if (spec.script !== language.script) return 2;
-  return 3;
+  if (spec.script == null) {
+    return spec.language == language.language ? 2 : 0;
+  }
+  return "script" in language &&
+    language.script !== null &&
+    spec.language == language.language &&
+    spec.script == language.script
+    ? 3
+    : 0;
 }
 
 export function _parse(specifier: string): Language {
@@ -25,11 +31,11 @@ export function _findBestLanguage(
   wantedByUser: Language[]
 ): Language {
   let best: [MatchLevel, Language] = [0, available[0] ?? { language: null }];
-  for (const lang of wantedByUser) {
-    for (const s of available) {
-      const match = matches(s, lang);
+  for (const spec of wantedByUser) {
+    for (const language of available) {
+      const match = matches(spec, language);
       if (match > best[0]) {
-        best = [match, s];
+        best = [match, language];
       }
     }
 
