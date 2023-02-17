@@ -1,5 +1,10 @@
 use std::{fmt::Display, str::FromStr};
 
+use axum::{
+    extract::FromRequestParts,
+    http::{request::Parts, HeaderValue},
+};
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Language {
     #[default]
@@ -62,7 +67,7 @@ fn parse(specifier: &str) -> Language {
     let mut parts = specifier.split(&['_', '-']);
     match parts.next() {
         None => Language::Catchall,
-        Some(lang) if lang.is_empty() => Language::Catchall,
+        Some(lang) if lang.is_empty() || lang == "*" => Language::Catchall,
         Some(lang) => match parts.next() {
             None => Language::LanguageOnly(lang.to_ascii_lowercase()),
             Some(script) => {
@@ -92,6 +97,45 @@ fn find_best_language(available: &[Language], wanted_by_user: &[Language]) -> La
     }
 
     best.1
+}
+
+pub struct ExtractLanguage(pub Language);
+
+fn parse_header(header: Option<&HeaderValue>) -> Option<Vec<Language>> {
+    let header = header?.to_str().ok()?;
+    let headers = header
+        .split(',')
+        .into_iter()
+        .map(|s| s.trim())
+        .flat_map(|s| s.split(';').next())
+        .map(parse)
+        .collect::<Vec<_>>();
+
+    if headers.is_empty() {
+        None
+    } else {
+        Some(headers)
+    }
+}
+
+#[axum::async_trait]
+impl<S> FromRequestParts<S> for ExtractLanguage
+where
+    S: Send + Sync,
+{
+    type Rejection = ();
+
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        let available = vec![
+            Language::LanguageOnly("en".to_owned()),
+            Language::LanguageOnly("de".to_owned()),
+        ];
+        let language = parse_header(parts.headers.get("accept-language"))
+            .map(|languages| find_best_language(&available, &languages))
+            .unwrap_or_else(|| Language::LanguageOnly("en".to_owned()));
+
+        Ok(ExtractLanguage(language))
+    }
 }
 
 #[cfg(test)]
@@ -161,9 +205,14 @@ mod tests {
         }
 
         #[test]
+        fn returns_catch_all_language_if_star_is_passed() {
+            assert_eq!(parse("*"), Language::Catchall);
+        }
+
+        #[test]
         fn returns_catch_language_if_only_language_is_passed() {
             assert_eq!(parse("en"), Language::LanguageOnly("en".to_owned()));
-            assert_eq!(parse("*"), Language::LanguageOnly("*".to_owned()));
+            assert_eq!(parse("|"), Language::LanguageOnly("|".to_owned()));
             assert_eq!(
                 parse("NONSENSE"),
                 Language::LanguageOnly("nonsense".to_owned())
@@ -177,8 +226,8 @@ mod tests {
                 Language::LanguageScript("en".to_owned(), "US".to_owned())
             );
             assert_eq!(
-                parse("*_%"),
-                Language::LanguageScript("*".to_owned(), "%".to_owned())
+                parse("g_%"),
+                Language::LanguageScript("g".to_owned(), "%".to_owned())
             );
             assert_eq!(
                 parse("a b c-D E F"),

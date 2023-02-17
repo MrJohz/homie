@@ -12,6 +12,8 @@ use axum::{
 use chrono::NaiveDate;
 use sqlx::SqlitePool;
 
+use crate::translations::ExtractLanguage;
+
 use super::{
     store::TaskStoreError,
     time::today,
@@ -34,15 +36,19 @@ impl IntoResponse for TaskStoreError {
     }
 }
 
-async fn list_all_tasks(State(store): State<TaskStore>) -> Result<Json<Vec<Task>>, TaskStoreError> {
-    store.tasks(&"en".into()).await.map(Json)
+async fn list_all_tasks(
+    State(store): State<TaskStore>,
+    ExtractLanguage(language): ExtractLanguage,
+) -> Result<Json<Vec<Task>>, TaskStoreError> {
+    store.tasks(&language).await.map(Json)
 }
 
 async fn tasks_for_person(
     Path(person): Path<String>,
     State(store): State<TaskStore>,
+    ExtractLanguage(language): ExtractLanguage,
 ) -> Result<Json<Vec<Task>>, TaskStoreError> {
-    store.tasks_for(&person, &"en".into()).await.map(Json)
+    store.tasks_for(&person, &language).await.map(Json)
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -55,11 +61,12 @@ async fn mark_task_done(
     Path(task_id): Path<TaskId>,
     Query(query): Query<MarkTaskDoneQuery>,
     State(store): State<TaskStore>,
+    ExtractLanguage(language): ExtractLanguage,
 ) -> Result<Json<Task>, TaskStoreError> {
     store
         .mark_task_done(task_id, &query.by, &query.on.unwrap_or_else(today))
         .await?;
-    Ok(Json(store.task(task_id, &"en".into()).await?))
+    Ok(Json(store.task(task_id, &language).await?))
 }
 
 pub fn routes(conn: SqlitePool) -> Router {

@@ -266,3 +266,86 @@ async fn task_update_can_set_date_explicitly() {
     assert_eq!(updated.deadline, Deadline::Upcoming(9));
     assert_eq!(updated.last_completed, after_tomorrow);
 }
+
+#[tokio::test]
+async fn fetches_correct_translation_when_accept_lang_header_is_set() {
+    let server = common::harness_with_token().await;
+    server.auth_store().create_user("Kevin", "").await.unwrap();
+    server
+        .task_store()
+        .add_task(homie::tasks::NewTask {
+            names: names(&[
+                ("en", "ENGLISH_NAME"),
+                ("de", "GERMAN_NAME"),
+                ("fr", "FRENCH_NAME"),
+            ]),
+            routine: homie::tasks::Routine::Interval,
+            duration: 7,
+            participants: vec!["Kevin".to_owned()],
+            starts_on: (Local::now() - Duration::days(10)).date_naive(),
+            starts_with: "Kevin".to_owned(),
+        })
+        .await
+        .unwrap();
+
+    let english = server
+        .request(Method::GET, "/api/tasks")
+        .send()
+        .await
+        .unwrap()
+        .json::<Vec<Task>>()
+        .await
+        .unwrap();
+
+    assert_eq!(english[0].name, "ENGLISH_NAME");
+
+    let german = server
+        .request(Method::GET, "/api/tasks")
+        .header("Accept-Language", "de")
+        .send()
+        .await
+        .unwrap()
+        .json::<Vec<Task>>()
+        .await
+        .unwrap();
+
+    assert_eq!(german[0].name, "GERMAN_NAME");
+
+    let english_2 = server
+        .request(Method::GET, "/api/tasks")
+        .header("Accept-Language", "en-US,fr;q=0.5")
+        .send()
+        .await
+        .unwrap()
+        .json::<Vec<Task>>()
+        .await
+        .unwrap();
+
+    assert_eq!(english_2[0].name, "ENGLISH_NAME");
+
+    let french = server
+        .request(Method::GET, "/api/tasks")
+        .header("Accept-Language", "fr;q=0.5")
+        .send()
+        .await
+        .unwrap()
+        .json::<Vec<Task>>()
+        .await
+        .unwrap();
+
+    assert_eq!(french[0].name, "ENGLISH_NAME");
+
+    let english_3 = server
+        .request(Method::GET, "/api/tasks")
+        .header("Accept-Language", "*;q=0.5")
+        .send()
+        .await
+        .unwrap()
+        .json::<Vec<Task>>()
+        .await
+        .unwrap();
+
+    assert_eq!(english_3[0].name, "ENGLISH_NAME");
+
+    assert_eq!(english[0].id, german[0].id);
+}
