@@ -32,7 +32,7 @@ enum Commands {
     /// Adds a new task to the database
     AddTask {
         #[arg(long, required = true)]
-        names: Vec<String>,
+        name: Vec<String>,
         #[arg(long)]
         routine: String,
         #[arg(long)]
@@ -61,7 +61,7 @@ async fn main() {
             store.create_user(&name, &password).await.unwrap();
         }
         Commands::AddTask {
-            names,
+            name,
             routine,
             duration,
             participant,
@@ -72,7 +72,7 @@ async fn main() {
             let store = homie::tasks::TaskStore::new(conn);
             store
                 .add_task(homie::tasks::NewTask {
-                    names: names
+                    names: name
                         .into_iter()
                         .map(|pair| {
                             let (left, right) = pair.split_once('=').unwrap();

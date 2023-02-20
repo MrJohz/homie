@@ -34,7 +34,7 @@ export function App() {
       }
 
       setError(null);
-      setTasks(reconcile(tasks.value, { key: "name", merge: true }));
+      setTasks(reconcile(tasks.value, { key: "id", merge: true }));
     });
   }
 
@@ -71,7 +71,7 @@ export function App() {
       <TaskList
         tasks={tasks}
         onUpdate={(newTasks) =>
-          setTasks(reconcile(newTasks, { key: "name", merge: true }))
+          setTasks(reconcile(newTasks, { key: "id", merge: true }))
         }
       />
     </div>

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-import { ITask } from "./types";
+import { ITask, TaskId } from "./types";
 
 export type Success<T> = { k: "ok"; value: T };
 export type Error<T> = { k: "err"; value: T };
@@ -88,7 +88,7 @@ export async function fetchTasks(args: {
 
 export async function updateTask(args: {
   token: string;
-  taskName: string;
+  taskId: TaskId;
   doneBy: string;
 }): Promise<
   Result<
@@ -97,9 +97,9 @@ export async function updateTask(args: {
   >
 > {
   const response = await fetchWrapper(
-    `/api/tasks/actions/mark_task_done/${encodeURIComponent(
-      args.taskName
-    )}?by=${encodeURIComponent(args.doneBy)}`,
+    `/api/tasks/actions/mark_task_done/${args.taskId}?by=${encodeURIComponent(
+      args.doneBy
+    )}`,
     { method: "POST", headers: { token: args.token } }
   );
   if (response.k === "err") return response;

@@ -38,7 +38,7 @@ export function TaskDoneModal(props: {
       <Form
         onSubmit={async () => {
           const result = await authActions.fetchWithToken(updateTask, {
-            taskName: props.task.name,
+            taskId: props.task.id,
             doneBy: doneBy(),
           });
           if (result.k == "err") {

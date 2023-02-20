@@ -28,7 +28,8 @@ $BINARY add-user \
     --password="test-password-123"
 
 $BINARY add-task \
-      --name "Clean the dishes" \
+      --name "en=Clean the dishes" \
+      --name "de=Geschirr spülen" \
       --routine "interval" \
       --duration 14 \
       --participant "User A" \
@@ -37,7 +38,8 @@ $BINARY add-task \
       --starts-on 2022-01-01
 
 $BINARY add-task \
-      --name "Cook dinner" \
+      --name "en=Cook dinner" \
+      --name "de=Essen kochen" \
       --routine "schedule" \
       --duration 14 \
       --participant "User A" \

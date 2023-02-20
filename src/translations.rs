@@ -134,6 +134,7 @@ where
             .map(|languages| find_best_language(&available, &languages))
             .unwrap_or_else(|| Language::LanguageOnly("en".to_owned()));
 
+        tracing::trace!("using language {language:?}");
         Ok(ExtractLanguage(language))
     }
 }

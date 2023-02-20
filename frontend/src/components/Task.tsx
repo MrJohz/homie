@@ -16,7 +16,6 @@ import { TaskDoneModal } from "./TaskDoneModal";
 export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
   const [element, setElement] = createSignal<HTMLDivElement | null>(null);
   const [isOpen, setOpen] = createSignal(false);
-  const [isTransitioning, setTransitioning] = createSignal(false);
   const dueDate = () => {
     const lastCompleted = new Date(props.task.last_completed);
     if (props.task.kind === "Interval") {
@@ -30,15 +29,9 @@ export function Task(props: { task: ITask; onUpdate: (task: ITask) => void }) {
       return `${formatDate(start)} – ${formatDate(end)}`;
     }
   };
+
   return (
-    <div
-      ref={setElement}
-      class={styles.taskbox}
-      style={{
-        "margin-bottom": isTransitioning() ? `-41px` : undefined,
-        opacity: isTransitioning() ? 0 : undefined,
-      }}
-    >
+    <div ref={setElement} class={styles.taskbox}>
       <div class={styles.taskboxHeader}>
         <span>{props.task.name}</span>
         <span>{props.task.assigned_to}</span>
