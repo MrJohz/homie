@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use chrono::{Duration, Local};
 use homie::tasks::{Deadline, Task};
+use proptest::{prelude::*, test_runner::TestRunner};
 use reqwest::Method;
 
 fn names(names: &[(&str, &str)]) -> HashMap<String, String> {
@@ -348,4 +349,54 @@ async fn fetches_correct_translation_when_accept_lang_header_is_set() {
     assert_eq!(english_3[0].name, "ENGLISH_NAME");
 
     assert_eq!(english[0].id, german[0].id);
+}
+
+fn language_header_value() -> impl Strategy<Value = Option<String>> {
+    prop::option::weighted(0.8, r#"[a-zA-Z0-9 :;.,\\/"'?!(){}\[\]@<>=+*#$&`|~^%_-]*"#)
+}
+
+#[test]
+fn does_not_crash_on_arbitrary_values_for_accept_language() {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
+    let server = rt.block_on(common::harness_with_token());
+    rt.block_on(server.auth_store().create_user("Kevin", ""))
+        .unwrap();
+    rt.block_on(server.task_store().add_task(homie::tasks::NewTask {
+        names: names(&[
+            ("en", "ENGLISH_NAME"),
+            ("de", "GERMAN_NAME"),
+            ("fr", "FRENCH_NAME"),
+        ]),
+        routine: homie::tasks::Routine::Interval,
+        duration: 7,
+        participants: vec!["Kevin".to_owned()],
+        starts_on: (Local::now() - Duration::days(10)).date_naive(),
+        starts_with: "Kevin".to_owned(),
+    }))
+    .unwrap();
+
+    let mut runner = TestRunner::new(proptest::test_runner::Config {
+        source_file: Some(file!()),
+        ..proptest::test_runner::Config::default()
+    });
+    runner
+        .run(&language_header_value(), |header| {
+            let tasks = server.request(Method::GET, "/api/tasks");
+            let tasks = match header {
+                Some(header) => tasks.header("Accept-Language", header),
+                None => tasks,
+            };
+
+            let tasks = rt.block_on(tasks.send()).unwrap();
+            let tasks = rt.block_on(tasks.json::<Vec<Task>>()).unwrap();
+
+            assert_ne!(tasks[0].name, "FRENCH_NAME");
+            assert!(tasks[0].name == "ENGLISH_NAME" || tasks[0].name == "GERMAN_NAME");
+            Ok(())
+        })
+        .unwrap();
 }
